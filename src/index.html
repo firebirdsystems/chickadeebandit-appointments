@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Appointments &amp; Check-ups</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: var(--hub-bg, #f9fafb);
+      --surface: var(--hub-surface, #ffffff);
+      --border: var(--hub-border, #e5e7eb);
+      --border-mid: var(--hub-border, #d1d5db);
+      --text: var(--hub-text, #000000);
+      --muted: var(--hub-text-muted, #6b7280);
+      --accent: var(--hub-primary, #111827);
+      --accent-hover: var(--hub-primary-hover, #374151);
+      --accent-fg: var(--hub-primary-fg, #ffffff);
+      --radius: var(--hub-radius, 10px);
+      --green: #047857; --green-soft: #d1fae5;
+      --amber: #b45309; --amber-soft: #fef3c7;
+      --red: #b91c1c; --red-soft: #fee2e2;
+      --blue: #1d4ed8; --blue-soft: #dbeafe;
+      --shadow: 0 1px 3px rgba(15, 23, 42, .07);
+    }
+    body {
+      min-height: 100vh; background: var(--bg); color: var(--text);
+      font-family: var(--hub-font, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+      font-size: var(--hub-font-size, 15px); line-height: 1.5;
+    }
+    .app { max-width: 760px; margin: 0 auto; padding: 16px; }
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    h1 { font-size: 1.35rem; line-height: 1.2; }
+    h2 { font-size: .95rem; }
+    .muted { color: var(--muted); }
+    .tiny { font-size: .78rem; }
+    .stack { display: grid; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid transparent; border-radius: 8px; padding: 8px 12px;
+      font: inherit; font-size: .86rem; font-weight: 700; cursor: pointer;
+      min-height: 38px; background: var(--accent); color: var(--accent-fg);
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: .48; cursor: default; }
+    .btn-ghost { background: transparent; color: var(--text); border-color: var(--border-mid); }
+    .btn-ghost:hover { background: rgba(127,127,127,.08); }
+    .btn-danger { background: var(--red-soft); color: var(--red); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .stat { display: grid; gap: 1px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+    .stat .v { font-size: 1.1rem; font-weight: 800; }
+    .stat .k { color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 800; }
+    .row {
+      display: flex; align-items: flex-start; gap: 11px; padding: 10px 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .row.archived { opacity: .55; }
+    .row-icon { font-size: 1.15rem; width: 30px; text-align: center; flex-shrink: 0; line-height: 1.4; }
+    .row-body { flex: 1; min-width: 0; }
+    .row-title { font-weight: 750; font-size: .92rem; }
+    .row-meta { color: var(--muted); font-size: .78rem; }
+    .row-side { flex-shrink: 0; text-align: right; display: grid; gap: 4px; justify-items: end; }
+    .pill {
+      display: inline-flex; align-items: center; min-height: 20px; padding: 1px 8px;
+      border-radius: 999px; white-space: nowrap; background: #f1f5f9; color: var(--muted);
+      font-size: .72rem; font-weight: 800;
+    }
+    .pill.soon { background: var(--red-soft); color: var(--red); }
+    .pill.book { background: var(--amber-soft); color: var(--amber); }
+    .pill.booked { background: var(--green-soft); color: var(--green); }
+    .pill.private { background: var(--blue-soft); color: var(--blue); }
+    .edit-link { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: .76rem; font-weight: 700; padding: 2px 4px; }
+    .edit-link:hover { color: var(--text); text-decoration: underline; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 2px 8px; }
+    .empty { color: var(--muted); text-align: center; padding: 30px 16px; }
+    .error { background: var(--red-soft); color: var(--red); padding: 9px 12px; border-radius: 8px; margin-bottom: 10px; font-size: .86rem; }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal { background: var(--surface); border-radius: 14px; padding: 22px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,.25); max-height: 92vh; overflow-y: auto; }
+    .modal h2 { font-size: 1.05rem; margin-bottom: 16px; }
+    .form { display: grid; gap: 12px; }
+    .field { display: grid; gap: 5px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 800; }
+    input, select, textarea {
+      width: 100%; border: 1.5px solid var(--border-mid); border-radius: 8px;
+      padding: 9px 11px; font: inherit; background: var(--surface); color: var(--text);
+    }
+    textarea { min-height: 56px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end; flex-wrap: wrap; }
+    .modal-left { margin-right: auto; }
+    .visit { border-top: 1px solid var(--border); padding: 8px 0; font-size: .86rem; }
+    .visit:first-of-type { border-top: 0; }
+    @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; } }
+    .search-row { margin-bottom: 12px; }
+    .search-input {
+      width: 100%; border: 1.5px solid var(--border-mid, var(--border, #d1d5db));
+      border-radius: 8px; padding: 9px 11px; font: inherit;
+      background: var(--surface, var(--card, #fff)); color: var(--text, inherit);
+    }
+    .search-input:focus { outline: none; border-color: var(--accent, #6366f1); }
+  </style>
+  <base href="/run/appointments/">
+</head>
+<body>
+<div class="app">
+  <div id="root" class="empty">Loading…</div>
+</div>
+
+<script type="module">
+import { esc, hubConfirm, searchMatch, hubToday, createDbHelper } from "/hub-sdk.js";
+
+// The household's calendar day as a Date, for the pure helpers in logic.js.
+// Those helpers default their date parameter to `new Date()` — the VIEWER
+// DEVICE's calendar — but they compare against dates STORED on the household
+// calendar, which is what every server-side surface (glance, agenda, the
+// date_reminders cron, `:today` in declared SQL) reports. Near midnight, or for
+// a member in another timezone, the two name different days. logic.js stays
+// pure and SDK-free, so the household day is supplied here. Noon keeps a DST
+// shift from tipping it into an adjacent day.
+const hubDay = () => new Date(`${hubToday()}T12:00:00`);
+
+import {
+  KINDS, REMIND_SCOPES, VISIBILITIES, CADENCE_NOTE, WELL_CHILD_VISIT_AGES_MONTHS, DEFAULT_LEAD_DAYS,
+  kindMeta, suggestedIntervalMonths, normalizeIntervalMonths, isIsoDate, dueLabel, shortDate, longDate,
+  formatTime, addMonths, rollForwardDate, clampLeadDays, leadChoicesFor, remindOnDate,
+  wantsBookingNudge, announcesBooking, isAnnounceable, nudgeRetractionReason, nudgeInputsChanged, bookingChanged,
+  reviewTitle, bookingTitle, eventSummary, needsBooking, sortedAppointments,
+  lastVisitByAppointment, canManage as _canManage, searchableFields,
+} from "./logic.js";
+
+const CONTEXT = window.__CONTEXT_URL ?? "";
+const DB = window.__DB_URL ?? "";
+const EVENTS = window.__EVENTS_URL ?? "";
+const HUB_MEMBER = window.__CURRENT_MEMBER ?? null;
+
+const db = createDbHelper(DB);
+
+/**
+ * The message for a write that was ACCEPTED and changed nothing.
+ *
+ * A row policy narrows a write rather than refusing it: `write_visibility_scoped`
+ * appends the visibility condition to the WHERE, so an UPDATE or DELETE aimed at
+ * a row the caller may no longer touch matches zero rows and comes back HTTP 200
+ * with `changed: 0`. Reading 200 as success is how an app shows a saved edit that
+ * was never stored — and, worse here, goes on to publish a calendar retraction
+ * for a row it did not actually change.
+ *
+ * It is reachable without any attack: the other parent turns a shared
+ * appointment private, or deletes it, between this browser's last load and this
+ * write. So every write in this file checks `changed` and treats zero as a
+ * failure, which rolls the optimistic row back and publishes nothing.
+ */
+const NOT_YOURS = "That appointment changed or became private somewhere else — nothing was saved. Reload to see it as it is now.";
+
+/** Throws unless the write actually landed. `changed` is the affected-row count
+ *  the hub returns beside `rows` for every statement.
+ *
+ *  Inert without a database: `createDbHelper` short-circuits to `{ rows: [] }`
+ *  when `__DB_URL` is empty, so demo mode reports no affected rows for a write
+ *  it never made. Checking that would turn every demo-mode save into a visible
+ *  failure — and demo mode exists precisely so the app renders and works with no
+ *  hub behind it. */
+function assertChanged(result, message = NOT_YOURS) {
+  if (!DB) return;
+  if (Number(result?.changed ?? 0) > 0) return;
+  throw new Error(message);
+}
+
+/* ── First-render reads ──────────────────────────────────────────────────────
+ * Declared once here and mirrored verbatim in manifest.preload, so the hub can
+ * answer this batch from the rows it already embedded in the document — zero
+ * round trips on launch. A drifted copy is not an error anywhere; it is a
+ * preload that silently never answers, which is why __tests__/preload.test.mjs
+ * asserts the manifest still contains these exact strings.
+ *
+ * Both are bounded. `appointments` is capped at 500 (the row policy's own
+ * max_rows is 2000) with a deterministic tiebreak so the list cannot reshuffle
+ * between loads; `recent_visits` reads a 200-row tail newest-first, which is
+ * what the list needs to show each row's last visit. The full history of one
+ * appointment is fetched only when someone opens it.
+ */
+const READ_APPOINTMENTS =
+  "SELECT id, person_id, kind, title, provider_name, provider_phone, provider_url, interval_months, next_due_date, scheduled_date, scheduled_time, lead_days, remind, remind_scope, visibility, status, notes, last_reminded_at, created_by, created_at, updated_at FROM app_appointments__appointments WHERE status = 'active' ORDER BY (next_due_date = ''), next_due_date, id LIMIT 500";
+const READ_RECENT_VISITS =
+  "SELECT id, appointment_id, visit_date, outcome, notes, logged_by, created_at FROM app_appointments__visits ORDER BY visit_date DESC, id DESC LIMIT 200";
+
+const APPOINTMENT_COLUMNS = [
+  "person_id", "kind", "title", "provider_name", "provider_phone", "provider_url",
+  "interval_months", "next_due_date", "scheduled_date", "scheduled_time",
+  "lead_days", "remind", "remind_scope", "visibility", "status", "notes",
+];
+
+/**
+ * Publish an app event. THROWS on a network failure or any non-2xx — a 403 that
+ * looked like a success here would let the app tell the household "saved and
+ * notified" while the calendar entry it promised never existed. Every caller
+ * goes through publishSafely, which turns the throw into a visible "couldn't
+ * notify" without disturbing the row that was already committed.
+ */
+async function publishEvent(type, subjectId, payload = {}) {
+  if (!EVENTS) return;
+  const res = await fetch(EVENTS, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, subject_id: subjectId, payload }),
+  });
+  if (!res.ok) throw new Error(`Publish failed (${res.status})`);
+}
+
+async function publishSafely(type, subjectId, payload) {
+  try { await publishEvent(type, subjectId, payload); }
+  catch { error = "Saved. Couldn't notify other apps — a calendar entry may be missing."; render(); }
+}
+
+/* ── State ─────────────────────────────────────────────────────────────────── */
+let members = [];
+let memberMap = new Map();
+let me = null;
+let appointments = [];
+let recentVisits = [];
+let archivedLoaded = false; // archived rows are fetched on demand, then merged in
+let showArchived = false;
+let lastVisits = new Map();
+let reminderStatus = null; // { entitled, missing_capabilities, bundle } | null
+let searchQ = "";
+let error = "";
+let modalEl = null;
+
+function nowIso() { return new Date().toISOString(); }
+function canManage() { return _canManage(me); }
+// person_id is NOT NULL and always names a member. A set-but-unresolvable id is
+// somebody who left the household — member_references deletes their rows, so
+// this should only ever be seen in the moment between the roster change and the
+// sweep, and it says so rather than rendering a raw uuid.
+function memberName(id) { return id ? (memberMap.get(id)?.name ?? "Former member") : ""; }
+
+/* ── Loading ───────────────────────────────────────────────────────────────── */
+async function loadMembers() {
+  if (!CONTEXT) {
+    members = [
+      { id: "demo-1", name: "Alex", role: "adult" },
+      { id: "demo-2", name: "Jordan", role: "adult" },
+      { id: "demo-3", name: "Sam", role: "child", birthday: "2018-04-02" },
+    ];
+  } else {
+    try {
+      const res = await fetch(`${CONTEXT}?keys=family.members`);
+      members = ((await res.json())["family.members"]) ?? [];
+    } catch { members = []; }
+  }
+  memberMap = new Map(members.map((m) => [m.id, m]));
+  me = HUB_MEMBER ?? members[0] ?? { id: "guest", name: "Guest", role: "adult" };
+}
+
+function demoRows() {
+  const t = hubToday();
+  const iso = (days) => {
+    const d = hubDay();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  appointments = [
+    { id: "d1", person_id: "demo-3", kind: "dental", title: "Dentist", provider_name: "Bright Smiles", provider_phone: "555-0100", provider_url: "", interval_months: 6, next_due_date: iso(18), scheduled_date: "", scheduled_time: "", lead_days: 30, remind: 1, remind_scope: "household", visibility: "household", status: "active", notes: "", last_reminded_at: null, created_by: "demo-1", created_at: nowIso(), updated_at: nowIso() },
+    { id: "d2", person_id: "demo-1", kind: "physical", title: "Annual physical", provider_name: "Dr. Patel", provider_phone: "", provider_url: "", interval_months: 12, next_due_date: iso(120), scheduled_date: "", scheduled_time: "", lead_days: 30, remind: 1, remind_scope: "household", visibility: "household", status: "active", notes: "", last_reminded_at: null, created_by: "demo-1", created_at: nowIso(), updated_at: nowIso() },
+    { id: "d3", person_id: "demo-2", kind: "vision", title: "Eye exam", provider_name: "City Optical", provider_phone: "", provider_url: "", interval_months: 24, next_due_date: iso(-4), scheduled_date: iso(9), scheduled_time: "10:30", lead_days: 30, remind: 1, remind_scope: "private", visibility: "private", status: "active", notes: "", last_reminded_at: null, created_by: "demo-2", created_at: nowIso(), updated_at: nowIso() },
+  ];
+  recentVisits = [
+    { id: "v1", appointment_id: "d1", visit_date: addMonths(t, -6), outcome: "All clear", notes: "", logged_by: "demo-1", created_at: nowIso() },
+  ];
+}
+
+async function loadData() {
+  if (!DB) { demoRows(); return; }
+  const [appts, visits] = await db.batch([
+    { sql: READ_APPOINTMENTS },
+    { sql: READ_RECENT_VISITS },
+  ]);
+  appointments = appts.rows ?? [];
+  recentVisits = visits.rows ?? [];
+}
+
+/**
+ * Archived rows, fetched only when someone asks for them.
+ *
+ * They are deliberately out of the preload: an archive grows forever and the
+ * first screen never shows it, so carrying it on every launch would bill rows
+ * nobody reads. Without this an archive would be one-way — the row would vanish
+ * from the list with no way back — which is the difference between archiving
+ * and deleting.
+ */
+async function loadArchived() {
+  if (archivedLoaded) return;
+  archivedLoaded = true;
+  if (!DB) return;
+  try {
+    const res = await db(
+      "SELECT id, person_id, kind, title, provider_name, provider_phone, provider_url, interval_months, next_due_date, scheduled_date, scheduled_time, lead_days, remind, remind_scope, visibility, status, notes, last_reminded_at, created_by, created_at, updated_at FROM app_appointments__appointments WHERE status = 'archived' ORDER BY (next_due_date = ''), next_due_date, id LIMIT 200",
+    );
+    // Merged into the one list every other code path already reads, deduped by
+    // id: a row archived earlier in this session is already here with its local
+    // edits, and the fetched copy must not resurrect the pre-edit values.
+    const known = new Set(appointments.map((a) => a.id));
+    appointments = [...appointments, ...(res.rows ?? []).filter((r) => !known.has(r.id))];
+  } catch (e) { archivedLoaded = false; throw e; }
+}
+
+/** Whether the hub cron will actually EMAIL "time to book" for this household.
+ *  Non-fatal: demo mode and older hubs just leave the badge off. */
+async function loadReminderStatus() {
+  reminderStatus = null;
+  if (!DB) return;
+  try {
+    const res = await fetch("api/reminders-status");
+    if (res.ok) reminderStatus = await res.json();
+  } catch { /* leave null — the UI simply says less */ }
+}
+
+async function refresh() {
+  error = "";
+  try {
+    await Promise.all([loadMembers(), loadData(), loadReminderStatus()]);
+    render();
+    handleDeepLink();
+  } catch (e) { error = e.message; render(); }
+}
+
+function showError(msg) { error = msg; render(); }
+
+function handleDeepLink() {
+  const id = new URLSearchParams(window.location.search).get("appointmentId");
+  const appt = id ? appointments.find((a) => a.id === id) : null;
+  if (appt) openEditor(appt);
+}
+
+/* ── Event announcements ────────────────────────────────────────────────────
+ * Two independent calendar entries per appointment, each with its own steady
+ * reference so the calendar's create/retract pair can move or remove exactly
+ * one of them:
+ *   `appointments:<id>`         the "time to book" day (due date minus lead)
+ *   `appointments:<id>:booked`  the booked slot itself
+ * The event id changes on every publish, so it can only say "this is a fresh
+ * event", never "this is the same appointment as last time" — which is why the
+ * reference is namespaced by app and derived from the row id.
+ */
+const bookRef = (id) => `appointments:${id}`;
+const slotRef = (id) => `appointments:${id}:booked`;
+
+/**
+ * Publish something ABOUT an appointment. The row is the first argument, not
+ * its id, because visibility is a question every one of these has to answer and
+ * an id cannot answer it: the event bus is a channel row policies cannot see,
+ * and the only consumer of these events writes a household-visible calendar
+ * row. A `private` appointment therefore publishes NOTHING — not a redacted
+ * version, which would still say this person has something on this day.
+ *
+ * This is the ONLY way to publish an assertion. `announceCancelled` below is
+ * the single deliberate exception and says why; __tests__/manifest.test.mjs
+ * fails on any third call site, which is how the visit-logged leak (title,
+ * person, kind and free-text outcome of a private therapy visit, published
+ * unconditionally) would have been caught when it was written.
+ */
+async function announceFor(appt, type, payload) {
+  if (!isAnnounceable(appt)) return;
+  await publishSafely(type, appt.id, payload);
+}
+
+async function announceDueSoon(appt) {
+  if (!wantsBookingNudge(appt)) return;
+  const remindOn = remindOnDate(appt.next_due_date, appt.lead_days, appt.interval_months, hubDay());
+  if (!remindOn) return;
+  await announceFor(appt, "appointment.due_soon", {
+    source_ref_id: bookRef(appt.id),
+    title: appt.title,
+    person_id: appt.person_id,
+    kind: appt.kind,
+    due_date: appt.next_due_date,
+    remind_on: remindOn,
+    review_title: reviewTitle(appt, memberName(appt.person_id)),
+    summary: eventSummary(appt),
+  });
+}
+
+async function announceBooked(appt) {
+  // Same confidentiality gate as the booking nudge: a private row is never
+  // announced, because the calendar entry this becomes is household-visible.
+  if (!announcesBooking(appt)) return;
+  await announceFor(appt, "appointment.booked", {
+    source_ref_id: slotRef(appt.id),
+    title: appt.title,
+    person_id: appt.person_id,
+    scheduled_date: appt.scheduled_date,
+    scheduled_time: appt.scheduled_time || undefined,
+    provider_name: appt.provider_name || undefined,
+    review_title: bookingTitle(appt, memberName(appt.person_id)),
+    summary: eventSummary(appt),
+  });
+}
+
+/** Say an announced entry no longer applies, so a rule can take it back down.
+ *  Retraction of a reference the calendar never saw is a no-op there, but each
+ *  publish still costs an automation run, so this is only called on a real
+ *  transition out of "announced".
+ *
+ *  The one publish NOT routed through announceFor, deliberately: the row may
+ *  have just become private, and that is exactly when the entry standing on the
+ *  household calendar has to come down. Gating this on visibility would strand
+ *  it there forever. It carries only what the calendar already published. */
+async function announceCancelled(appt, ref, reason) {
+  await publishSafely("appointment.cancelled", appt.id, {
+    source_ref_id: ref,
+    title: appt.title,
+    person_id: appt.person_id,
+    reason,
+  });
+}
+
+/** Publish whatever this edit calls for — the booking nudge, the booked slot,
+ *  or the retraction of either. */
+async function syncAnnouncements(prev, next) {
+  const reason = nudgeRetractionReason(prev, next);
+  if (reason) await announceCancelled(next, bookRef(next.id), reason);
+  else if (nudgeInputsChanged(prev, next)) await announceDueSoon(next);
+
+  // `announcesBooking` folds in visibility, so turning a booked row private
+  // retracts its slot entry and turning it back announces afresh. The `!hadSlot`
+  // arm matters for exactly that second case: the dates did not move, so
+  // bookingChanged is false, and without it the entry would never come back.
+  const hadSlot = announcesBooking(prev);
+  const hasSlot = announcesBooking(next);
+  if (hasSlot && (!hadSlot || bookingChanged(prev, next))) await announceBooked(next);
+  else if (hadSlot && !hasSlot) {
+    await announceCancelled(next, slotRef(next.id), isAnnounceable(next) ? "unbooked" : "private");
+  }
+}
+
+/* ── Mutations ─────────────────────────────────────────────────────────────── */
+
+async function saveAppointment(fields, existingId) {
+  const now = nowIso();
+  if (existingId) {
+    const idx = appointments.findIndex((a) => a.id === existingId);
+    if (idx === -1) return;
+    const prev = { ...appointments[idx] };
+    // A moved due date is a NEW occurrence, so the old one's send stamp must not
+    // carry over: the hub silences a row whose `last_reminded_at` falls inside
+    // the current occurrence's `lead_days + 1` window, and an edit that shifts
+    // the date by less than that window would leave last cycle's stamp sitting
+    // inside this one — the corrected date is then never emailed, with nothing
+    // on screen to say so. Clearing cannot double-send; the hub's per-recipient
+    // send log still holds the previous occurrence.
+    const dueMoved = String(prev.next_due_date ?? "") !== String(fields.next_due_date ?? "");
+    appointments[idx] = { ...prev, ...fields, updated_at: now };
+    if (dueMoved) appointments[idx].last_reminded_at = null;
+    const saved = appointments[idx];
+    closeModal(); render();
+    try {
+      assertChanged(await db(
+        `UPDATE app_appointments__appointments SET ${APPOINTMENT_COLUMNS.map((c) => `${c} = ?`).join(", ")}, ${dueMoved ? "last_reminded_at = NULL, " : ""}updated_at = ? WHERE id = ?`,
+        [...APPOINTMENT_COLUMNS.map((c) => saved[c]), now, existingId],
+      ));
+    } catch (e) { appointments[idx] = prev; showError(e.message); return; }
+    // Outside the rollback: the row is committed, so a failed publish must not
+    // put the pre-edit values back on screen.
+    await syncAnnouncements(prev, saved);
+  } else {
+    const row = {
+      id: crypto.randomUUID(), ...fields,
+      last_reminded_at: null, created_by: me.id, created_at: now, updated_at: now,
+    };
+    appointments = [...appointments, row];
+    closeModal(); render();
+    try {
+      assertChanged(await db(
+        `INSERT INTO app_appointments__appointments (id, ${APPOINTMENT_COLUMNS.join(", ")}, created_by, created_at, updated_at) VALUES (${new Array(APPOINTMENT_COLUMNS.length + 4).fill("?").join(", ")})`,
+        [row.id, ...APPOINTMENT_COLUMNS.map((c) => row[c]), row.created_by, now, now],
+      ), "The appointment could not be added. Reload and try again.");
+    } catch (e) { appointments = appointments.filter((a) => a.id !== row.id); showError(e.message); return; }
+    await syncAnnouncements(null, row);
+  }
+}
+
+async function deleteAppointment(id) {
+  const ok = await hubConfirm({
+    message: "Delete this appointment?",
+    description: "Its visit history goes with it. To keep the history, archive it instead.",
+    confirmLabel: "Delete",
+    destructive: true,
+  });
+  if (!ok) return;
+  // Captured before the local list drops it: the retraction needs to know which
+  // calendar entries this row ever had.
+  const doomed = appointments.find((a) => a.id === id);
+  if (!doomed) return;
+  const prevAppointments = appointments;
+  const prevVisits = recentVisits;
+  appointments = appointments.filter((a) => a.id !== id);
+  recentVisits = recentVisits.filter((v) => v.appointment_id !== id);
+  closeModal(); render();
+  try {
+    // A SINGLE statement, never a batch: manifest `delete_cascades` names this
+    // table, and the hub refuses a batched DELETE on such a parent rather than
+    // stranding the children it cannot resolve per statement.
+    assertChanged(await db("DELETE FROM app_appointments__appointments WHERE id = ?", [id]));
+  } catch (e) { appointments = prevAppointments; recentVisits = prevVisits; showError(e.message); return; }
+  // After the DELETE commits, and not before: a retraction published for a row
+  // that then failed to delete would leave it listed with its calendar entry
+  // already gone.
+  // Only what was actually announced needs retracting — a private row put
+  // nothing on the calendar, and each publish costs an automation run.
+  if (wantsBookingNudge(doomed)) await announceCancelled(doomed, bookRef(id), "deleted");
+  if (announcesBooking(doomed)) await announceCancelled(doomed, slotRef(id), "deleted");
+}
+
+/**
+ * Log a visit: record it, and roll the cadence forward from the day it actually
+ * happened. One batch, one request, one atomic transaction — a visit recorded
+ * without its roll-forward would keep nudging "time to book" for something the
+ * household has already done.
+ */
+async function logVisit(apptId, { visitDate, outcome, notes }) {
+  const idx = appointments.findIndex((a) => a.id === apptId);
+  if (idx === -1) return;
+  const prev = { ...appointments[idx] };
+  const now = nowIso();
+  const visit = {
+    id: crypto.randomUUID(), appointment_id: apptId, visit_date: visitDate,
+    logged_by: me.id, outcome, notes, created_at: now,
+  };
+  const nextDue = rollForwardDate(prev, visitDate);
+  appointments[idx] = {
+    ...prev, next_due_date: nextDue, scheduled_date: "", scheduled_time: "",
+    last_reminded_at: null, updated_at: now,
+  };
+  const rolled = appointments[idx];
+  recentVisits = [visit, ...recentVisits];
+  closeModal(); render();
+  try {
+    const [inserted, rolledResult] = await db.batch([
+      {
+        sql: "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        params: [visit.id, visit.appointment_id, visit.visit_date, visit.logged_by, visit.outcome, visit.notes, visit.created_at],
+      },
+      {
+        // The rolled date is computed in JS and BOUND, not computed in SQL: one
+        // implementation of the month arithmetic rather than two that can
+        // disagree, and the optimistic row above already shows the value this
+        // writes. addMonths() reproduces `date(x, '+n months')` exactly,
+        // overflow and all (see logic.js).
+        sql: "UPDATE app_appointments__appointments SET next_due_date = ?, scheduled_date = '', scheduled_time = '', last_reminded_at = NULL, updated_at = ? WHERE id = ?",
+        params: [nextDue, now, apptId],
+      },
+    ]);
+    // Both statements are one atomic transaction, so a refused INSERT takes the
+    // UPDATE with it and lands here as a throw. A zero-`changed` UPDATE is the
+    // other case: the batch committed, the visit IS recorded, and only the
+    // roll-forward matched nothing because the appointment moved out of reach.
+    // Rolling the local row back would then be a lie in the opposite direction,
+    // so this reloads instead of pretending either way.
+    assertChanged(inserted, "The visit could not be logged. Reload and try again.");
+    if (DB && Number(rolledResult?.changed ?? 0) === 0) {
+      appointments[idx] = prev;
+      showError("The visit was logged, but the next due date could not be updated — the appointment changed or became private somewhere else. Reload to see it as it is now.");
+      return;
+    }
+  } catch (e) {
+    appointments[idx] = prev;
+    recentVisits = recentVisits.filter((v) => v.id !== visit.id);
+    showError(e.message);
+    return;
+  }
+  // Announced about `prev`, not `rolled`: same row, and prev is what the
+  // visit actually happened against. A private appointment publishes nothing —
+  // this payload carries the title, the person, the kind and the free-text
+  // outcome of, e.g., a therapy visit.
+  await announceFor(prev, "appointment.visit_logged", {
+    title: prev.title,
+    person_id: prev.person_id,
+    kind: prev.kind,
+    visit_date: visitDate,
+    outcome: outcome || undefined,
+  });
+  // The booked slot is gone (it was attended) and the due date moved, so both
+  // entries need updating: retract the old booking, announce the new cadence.
+  if (announcesBooking(prev)) await announceCancelled(rolled, slotRef(apptId), "attended");
+  if (wantsBookingNudge(rolled)) await announceDueSoon(rolled);
+  else if (wantsBookingNudge(prev)) await announceCancelled(rolled, bookRef(apptId), "completed");
+}
+
+/* ── Rendering ─────────────────────────────────────────────────────────────── */
+
+function duePill(a) {
+  if (isIsoDate(a.scheduled_date)) {
+    const t = formatTime(a.scheduled_time);
+    return `<span class="pill booked" data-testid="appt-booked">Booked ${esc(shortDate(a.scheduled_date))}${t ? ` · ${esc(t)}` : ""}</span>`;
+  }
+  const days = a._days;
+  if (days == null) return `<span class="pill" data-testid="appt-due">No date set</span>`;
+  const cls = days < 0 ? "soon" : needsBooking(a, hubDay()) ? "book" : "";
+  return `<span class="pill ${cls}" data-testid="appt-due">${esc(dueLabel(days))}</span>`;
+}
+
+function renderAppointment(a) {
+  const meta = kindMeta(a.kind);
+  const last = lastVisits.get(a.id);
+  const bits = [memberName(a.person_id), meta.label];
+  if (a.provider_name) bits.push(a.provider_name);
+  if (last) bits.push(`last ${shortDate(last.visit_date)}`);
+  return `
+    <div class="row ${a.status === "archived" ? "archived" : ""}" data-testid="appt-row" data-appt-id="${esc(a.id)}">
+      <div class="row-icon" aria-hidden="true">${meta.icon}</div>
+      <div class="row-body">
+        <div class="row-title" data-testid="appt-title">${esc(a.title)}</div>
+        <div class="row-meta" data-testid="appt-meta">${esc(bits.filter(Boolean).join(" · "))}</div>
+      </div>
+      <div class="row-side">
+        ${duePill(a)}
+        ${a.visibility === "private" ? `<span class="pill private" data-testid="appt-private">Private</span>` : ""}
+        ${canManage() ? `
+          <span>
+            <button class="edit-link" data-testid="log-visit" data-log="${esc(a.id)}">Log visit</button>
+            <button class="edit-link" data-testid="edit-appointment" data-edit="${esc(a.id)}">Edit</button>
+          </span>` : ""}
+      </div>
+    </div>`;
+}
+
+// Owns the filtering and the empty states, so the keystroke handler can refresh
+// the list without repeating how it is derived.
+function renderList() {
+  const all = sortedAppointments(appointments, hubDay());
+  const matching = searchQ ? all.filter((a) => searchMatch(searchQ, searchableFields(a))) : all;
+  const active = matching.filter((a) => a.status === "active");
+  const done = showArchived ? matching.filter((a) => a.status === "archived") : [];
+
+  let html = "";
+  if (active.length) html += `<div class="stack">${active.map(renderAppointment).join("")}</div>`;
+  else if (searchQ) html += `<div class="card empty">Nothing matches "${esc(searchQ)}".</div>`;
+  else html += `<div class="card empty">Nothing tracked yet${canManage() ? " — add the first check-up" : ""}.</div>`;
+
+  if (showArchived) {
+    html += `<div class="section-head"><h2 class="muted">Archived</h2></div>`;
+    html += done.length
+      ? `<div class="stack">${done.map(renderAppointment).join("")}</div>`
+      : `<div class="card empty">Nothing archived.</div>`;
+  }
+  return html;
+}
+
+// Re-render only the list on each keystroke so the search box keeps focus.
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "search") return;
+  searchQ = e.target.value;
+  const el = document.getElementById("appt-list");
+  if (el) el.innerHTML = renderList();
+});
+
+function render() {
+  lastVisits = lastVisitByAppointment(recentVisits);
+  const root = document.getElementById("root");
+  root.className = "app-root";
+  const today = hubDay();
+  const active = appointments.filter((a) => a.status === "active");
+  const toBook = active.filter((a) => needsBooking(a, today)).length;
+  const booked = active.filter((a) => isIsoDate(a.scheduled_date)).length;
+  const people = new Set(active.map((a) => a.person_id)).size;
+  root.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h1>Appointments &amp; Check-ups</h1>
+        <p class="muted tiny">Everyone's recurring health cadence, and a nudge when it is time to book.</p>
+        ${reminderStatus && !reminderStatus.entitled
+          ? `<p class="muted tiny" data-testid="upgrade-note">📬 Emailed "time to book" reminders are part of the ${esc(reminderStatus.bundle ?? "premium")} bundle — the countdown and the calendar entry work either way.</p>`
+          : ""}
+      </div>
+      ${canManage() ? `<button class="btn" data-testid="add-appointment" data-add>+ Add</button>` : ""}
+    </div>
+    ${error ? `<div class="error" data-testid="error">${esc(error)}</div>` : ""}
+    <div class="stats">
+      <div class="stat"><span class="v" data-testid="stat-to-book">${toBook}</span><span class="k">To book</span></div>
+      <div class="stat"><span class="v">${booked}</span><span class="k">Booked</span></div>
+      <div class="stat"><span class="v">${people}</span><span class="k">People</span></div>
+    </div>
+    ${appointments.length ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search appointments…" aria-label="Search appointments" value="${esc(searchQ)}" /></div>` : ""}
+    <div id="appt-list" data-testid="appt-list">${renderList()}</div>
+    ${!canManage() && appointments.length ? `<p class="muted tiny" data-testid="read-only-note" style="margin-top:10px">Only adults can add or change appointments.</p>` : ""}
+    <p style="margin-top:12px"><button class="edit-link" data-testid="toggle-archived" data-archived>${showArchived ? "Hide archived" : "Show archived"}</button></p>
+  `;
+}
+
+/* ── Modal ─────────────────────────────────────────────────────────────────── */
+function openModal(html) {
+  closeModal();
+  modalEl = document.createElement("div");
+  modalEl.className = "overlay";
+  modalEl.innerHTML = `<div class="modal">${html}</div>`;
+  modalEl.addEventListener("click", (e) => { if (e.target === modalEl) closeModal(); });
+  document.body.appendChild(modalEl);
+  modalEl.querySelector("[data-autofocus]")?.focus();
+}
+function closeModal() { modalEl?.remove(); modalEl = null; }
+
+/** The lead-time picker doubles as the on/off switch, so "nudge me about this
+ *  one" is a single decision: "No reminder" means remind = 0, any number is a
+ *  lead time with reminding on. Choices are filtered to what the cadence can
+ *  actually honor (see logic.js maxLeadDays). */
+function leadOptions(a, intervalMonths) {
+  const off = a ? Number(a.remind) === 0 : false;
+  const cur = clampLeadDays(a?.lead_days ?? DEFAULT_LEAD_DAYS, intervalMonths);
+  const label = (d) => (d === 7 ? "1 week before" : d === 14 ? "2 weeks before" : d === 30 ? "1 month before" : `${d} days before`);
+  return [
+    `<option value="off" ${off ? "selected" : ""}>No reminder</option>`,
+    ...leadChoicesFor(intervalMonths, cur).map((d) => `<option value="${d}" ${!off && d === cur ? "selected" : ""}>${label(d)}</option>`),
+  ].join("");
+}
+
+function intervalOf(el) {
+  const raw = el?.value ?? "";
+  return raw === "" ? null : Number(raw);
+}
+
+const INTERVAL_CHOICES = [1, 2, 3, 4, 6, 12, 24, 36, 60, 120];
+
+/**
+ * The line under the cadence picker.
+ *
+ * Well-child visits get the real schedule spelled out rather than one suggested
+ * interval, because the true cadence tapers and a single number cannot say
+ * that. The app has no way to compute where a child is on it — `family.members`
+ * carries no birthdate, by design, since `min_age` is the only rule allowed to
+ * read one — so it prints the schedule and lets the household choose.
+ */
+function cadenceHint(kind) {
+  if (kind !== "wellchild") return CADENCE_NOTE;
+  return `Well-child visits usually taper: ${WELL_CHILD_VISIT_AGES_MONTHS.join(", ")} months of age, then yearly. `
+    + `Pick the gap that fits now and change it as they grow. ${CADENCE_NOTE}`;
+}
+
+function openEditor(existing, prefill = null) {
+  if (!canManage()) return;
+  const a = existing ?? null;
+  const seed = prefill ?? {};
+  const person = a?.person_id ?? seed.person_id ?? me?.id ?? members[0]?.id ?? "";
+  const kind = a?.kind ?? seed.kind ?? "physical";
+  // Narrowed, not trusted: an INTEGER column can still hold attacker-chosen
+  // text (see normalizeIntervalMonths), and this value is rendered into option
+  // markup below. `suggestedIntervalMonths` is called with no age because
+  // family.members carries none — the hub strips the birthdate before an app
+  // ever sees a member.
+  const interval = a
+    ? normalizeIntervalMonths(a.interval_months)
+    : (seed.interval_months !== undefined ? normalizeIntervalMonths(seed.interval_months) : suggestedIntervalMonths(kind));
+  const personOptions = members.map((m) => `<option value="${esc(m.id)}" ${person === m.id ? "selected" : ""}>${esc(m.name)}</option>`).join("");
+  const kindOptions = KINDS.map((k) => `<option value="${k.value}" ${kind === k.value ? "selected" : ""}>${k.icon} ${esc(k.label)}</option>`).join("");
+  const intervalOptions = [
+    `<option value="" ${interval == null ? "selected" : ""}>One-off (no repeat)</option>`,
+    ...INTERVAL_CHOICES.concat(interval && !INTERVAL_CHOICES.includes(interval) ? [interval] : [])
+      .sort((x, y) => x - y)
+      .map((n) => `<option value="${esc(n)}" ${interval === n ? "selected" : ""}>Every ${esc(n === 12 ? "year" : n === 24 ? "2 years" : `${n} month${n === 1 ? "" : "s"}`)}</option>`),
+  ].join("");
+  const scopeOptions = REMIND_SCOPES.map((r) => `<option value="${r.value}" ${(a?.remind_scope ?? "household") === r.value ? "selected" : ""}>${esc(r.label)}</option>`).join("");
+  // `vis`, not `v`: `v` is a visit row everywhere else in this file, and the
+  // XSS scanner in __tests__/manifest.test.mjs reads that name as DB-valued.
+  const visOptions = VISIBILITIES.map((vis) => `<option value="${vis.value}" ${(a?.visibility ?? "household") === vis.value ? "selected" : ""}>${esc(vis.label)}</option>`).join("");
+  openModal(`
+    <h2>${a ? "Edit appointment" : "Add appointment"}</h2>
+    <form class="form" id="appt-form" data-testid="appt-form">
+      <div class="grid2">
+        <div class="field"><label for="f-person">Who it's for</label><select id="f-person" data-testid="field-person">${personOptions}</select></div>
+        <div class="field"><label for="f-kind">Kind</label><select id="f-kind" data-testid="field-kind">${kindOptions}</select></div>
+      </div>
+      <div class="field"><label for="f-title">What</label><input id="f-title" data-testid="field-title" data-autofocus value="${esc(a?.title ?? seed.title ?? "")}" placeholder="Dentist" required /></div>
+      <div class="grid2">
+        <div class="field"><label for="f-interval">How often</label><select id="f-interval" data-testid="field-interval">${intervalOptions}</select></div>
+        <div class="field"><label for="f-due">Next due</label><input id="f-due" data-testid="field-due" type="date" value="${esc(a?.next_due_date ?? seed.next_due_date ?? "")}" /></div>
+      </div>
+      <p class="muted tiny" style="margin-top:-4px" id="cadence-hint" data-testid="cadence-hint">${esc(cadenceHint(kind))}</p>
+      <div class="grid2">
+        <div class="field"><label for="f-sched-date">Booked for <span class="muted" style="text-transform:none">(optional)</span></label><input id="f-sched-date" data-testid="field-scheduled-date" type="date" value="${esc(a?.scheduled_date ?? "")}" /></div>
+        <div class="field"><label for="f-sched-time">At</label><input id="f-sched-time" data-testid="field-scheduled-time" type="time" value="${esc(a?.scheduled_time ?? "")}" /></div>
+      </div>
+      <div class="field"><label for="f-provider">Provider</label><input id="f-provider" data-testid="field-provider" value="${esc(a?.provider_name ?? "")}" placeholder="Dr. Patel" /></div>
+      <div class="grid2">
+        <div class="field"><label for="f-phone">Phone</label><input id="f-phone" value="${esc(a?.provider_phone ?? "")}" inputmode="tel" /></div>
+        <div class="field"><label for="f-url">Booking link</label><input id="f-url" value="${esc(a?.provider_url ?? "")}" placeholder="https://…" /></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="f-lead">Nudge me to book</label><select id="f-lead" data-testid="field-lead">${leadOptions(a, interval)}</select></div>
+        <div class="field"><label for="f-scope">Email goes to</label><select id="f-scope" data-testid="field-scope">${scopeOptions}</select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="f-visibility">Who can see it</label><select id="f-visibility" data-testid="field-visibility">${visOptions}</select></div>
+        <div class="field"><label for="f-status">Status</label>
+          <select id="f-status" data-testid="field-status">
+            <option value="active" ${(a?.status ?? "active") === "active" ? "selected" : ""}>Active</option>
+            <option value="archived" ${a?.status === "archived" ? "selected" : ""}>Archived</option>
+          </select>
+        </div>
+      </div>
+      <p class="muted tiny" style="margin-top:-4px" id="lead-note" data-testid="lead-note">${esc(leadNote(a?.visibility ?? "household", a?.remind_scope ?? "household", person))}</p>
+      <div class="field"><label for="f-notes">Notes</label><textarea id="f-notes" data-testid="field-notes">${esc(a?.notes ?? "")}</textarea></div>
+      <div class="modal-actions">
+        ${a ? `<button type="button" class="btn btn-danger modal-left" data-testid="appt-delete" data-delete="${esc(a.id)}">Delete</button>` : ""}
+        ${a ? `<button type="button" class="btn btn-ghost" data-testid="appt-history" data-history="${esc(a.id)}">History</button>` : ""}
+        <button type="button" class="btn btn-ghost" data-testid="appt-cancel" data-cancel>Cancel</button>
+        <button type="submit" class="btn" data-testid="appt-submit">${a ? "Save" : "Add"}</button>
+      </div>
+    </form>`);
+
+  // Changing the cadence changes which lead times can be honored, so the picker
+  // is rebuilt rather than left offering a value that would be silently clamped
+  // on save. Picking a KIND (or a different person) re-suggests the cadence,
+  // but only while the row is new — silently rewriting a household's own
+  // interval on an edit would undo a decision they made deliberately.
+  const rebuildLead = () => {
+    const leadEl = modalEl?.querySelector("#f-lead");
+    if (!leadEl) return;
+    const kept = leadEl.value;
+    leadEl.innerHTML = leadOptions(
+      { remind: kept === "off" ? 0 : 1, lead_days: kept === "off" ? DEFAULT_LEAD_DAYS : Number(kept) },
+      intervalOf(modalEl?.querySelector("#f-interval")),
+    );
+  };
+  modalEl.querySelector("#f-interval").addEventListener("change", rebuildLead);
+
+  // The note answers "where will this actually go", and all three of these
+  // change the answer — including visibility, which decides whether anything is
+  // published at all.
+  const refreshLeadNote = () => {
+    const note = modalEl?.querySelector("#lead-note");
+    if (!note) return;
+    note.textContent = leadNote(
+      modalEl.querySelector("#f-visibility")?.value,
+      modalEl.querySelector("#f-scope")?.value,
+      modalEl.querySelector("#f-person")?.value,
+    );
+  };
+  for (const id of ["#f-visibility", "#f-scope", "#f-person"]) {
+    modalEl.querySelector(id).addEventListener("change", refreshLeadNote);
+  }
+  if (!a) {
+    const resuggest = () => {
+      const kindEl = modalEl?.querySelector("#f-kind");
+      const intervalEl = modalEl?.querySelector("#f-interval");
+      const suggested = suggestedIntervalMonths(kindEl?.value);
+      if (intervalEl && [...intervalEl.options].some((o) => Number(o.value) === suggested)) {
+        intervalEl.value = String(suggested);
+        rebuildLead();
+      }
+      const hint = modalEl?.querySelector("#cadence-hint");
+      if (hint) hint.textContent = cadenceHint(kindEl?.value);
+    };
+    modalEl.querySelector("#f-kind").addEventListener("change", resuggest);
+  }
+
+  modalEl.querySelector("#appt-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const title = document.getElementById("f-title").value.trim();
+    if (!title) { document.getElementById("f-title").focus(); return; }
+    const interval = intervalOf(document.getElementById("f-interval"));
+    const scheduledDate = document.getElementById("f-sched-date").value;
+    const scheduledTime = document.getElementById("f-sched-time").value;
+    if (scheduledTime && !scheduledDate) {
+      showError("A booked time needs a booked date.");
+      return;
+    }
+    const leadValue = document.getElementById("f-lead").value;
+    const status = document.getElementById("f-status").value;
+    const btn = modalEl?.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    saveAppointment({
+      person_id: document.getElementById("f-person").value,
+      kind: document.getElementById("f-kind").value,
+      title,
+      provider_name: document.getElementById("f-provider").value.trim(),
+      provider_phone: document.getElementById("f-phone").value.trim(),
+      provider_url: document.getElementById("f-url").value.trim(),
+      interval_months: interval,
+      next_due_date: document.getElementById("f-due").value,
+      scheduled_date: scheduledDate,
+      scheduled_time: scheduledDate ? scheduledTime : "",
+      // An archived appointment has no cadence left to keep, so it must never be
+      // nudged about one. The hub's date_reminders protocol has no status
+      // filter — it reads `remind` and nothing else — so "archived" has to be
+      // WRITTEN as remind = 0, or the cron would keep emailing "time to book"
+      // for something the household stopped tracking.
+      remind: status === "archived" || leadValue === "off" ? 0 : 1,
+      // Stored even when reminding is off, so turning it back on restores the
+      // lead time last chosen instead of silently resetting.
+      lead_days: clampLeadDays(leadValue === "off" ? (a?.lead_days ?? DEFAULT_LEAD_DAYS) : leadValue, interval),
+      remind_scope: document.getElementById("f-scope").value,
+      visibility: document.getElementById("f-visibility").value,
+      status,
+      notes: document.getElementById("f-notes").value.trim(),
+    }, a?.id ?? null).catch((err) => {
+      if (btn) { btn.disabled = false; btn.textContent = a ? "Save" : "Add"; }
+      showError(err.message);
+    });
+  });
+}
+
+/**
+ * Says which channels a nudge will actually arrive on, for THIS row.
+ *
+ * Two of the three sentences exist because the honest answer changes per row,
+ * and a note that promised the same thing for every row would be wrong twice:
+ *
+ *  - A **private** appointment publishes nothing. The calendar entry an
+ *    automation would make is household-visible (calendar's `create_event`
+ *    leaves `visibility` at its `'everyone'` default), so announcing a private
+ *    row would put its title, provider and phone in front of the household.
+ *    Saying "publishes a reminder other apps can act on" there would be a lie
+ *    about a confidentiality boundary, which is the worst kind.
+ *  - A reminder scoped to **one person with no email address** reaches nobody.
+ *    `on_no_recipients` is "skip", deliberately — the fallback would widen a
+ *    private health reminder to every adult, including one forbidden from
+ *    reading the row. So the app says so rather than letting it vanish.
+ */
+function leadNote(visibility, scope, personId) {
+  const parts = [];
+  parts.push(visibility === "private"
+    ? "Kept off the shared calendar: a private appointment publishes nothing to other apps."
+    : "Publishes a booking reminder other apps can act on — enable the Calendar automation in Settings to see it there.");
+  if (!reminderStatus) return parts.join(" ");
+  if (!reminderStatus.entitled) {
+    parts.push(`Email reminders need the ${reminderStatus.bundle ?? "premium"} bundle.`);
+    return parts.join(" ");
+  }
+  // `hasEmail` is absent on an older hub, and absent is not false — only warn
+  // when the roster actually said no.
+  const person = memberMap.get(personId);
+  if (scope === "private" && person && person.hasEmail === false) {
+    parts.push(`${person.name} has no email address, so this reminder would reach nobody — add one, or send it to everyone.`);
+  } else {
+    parts.push("Emailed ahead of the due date.");
+  }
+  return parts.join(" ");
+}
+
+function openVisitLogger(apptId) {
+  const a = appointments.find((x) => x.id === apptId);
+  if (!a || !canManage()) return;
+  const months = normalizeIntervalMonths(a.interval_months);
+  openModal(`
+    <h2>Log a visit — ${esc(a.title)}</h2>
+    <form class="form" id="visit-form" data-testid="visit-form">
+      <div class="field"><label for="v-date">When was it</label><input id="v-date" data-testid="field-visit-date" data-autofocus type="date" value="${esc(hubToday())}" required /></div>
+      <div class="field"><label for="v-outcome">Outcome</label><input id="v-outcome" data-testid="field-outcome" placeholder="All clear" /></div>
+      <div class="field"><label for="v-notes">Notes</label><textarea id="v-notes" data-testid="field-visit-notes"></textarea></div>
+      <p class="muted tiny">${months
+        ? `Next due will move to ${esc(longDate(addMonths(hubToday(), months)))} — ${esc(months)} month${months === 1 ? "" : "s"} after the visit — and any booked slot is cleared.`
+        : "This is a one-off, so nothing is scheduled after it. Use “Schedule a follow-up” if the provider asked for one."}</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost modal-left" data-testid="follow-up" data-followup="${esc(a.id)}">Schedule a follow-up</button>
+        <button type="button" class="btn btn-ghost" data-testid="visit-cancel" data-cancel>Cancel</button>
+        <button type="submit" class="btn" data-testid="visit-submit">Log it</button>
+      </div>
+    </form>`);
+  modalEl.querySelector("#visit-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const visitDate = document.getElementById("v-date").value;
+    if (!visitDate) { document.getElementById("v-date").focus(); return; }
+    const btn = modalEl?.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    logVisit(apptId, {
+      visitDate,
+      outcome: document.getElementById("v-outcome").value.trim(),
+      notes: document.getElementById("v-notes").value.trim(),
+    }).catch((err) => {
+      if (btn) { btn.disabled = false; btn.textContent = "Log it"; }
+      showError(err.message);
+    });
+  });
+}
+
+/**
+ * The whole history of one appointment, fetched on demand.
+ *
+ * Not preloaded: the list only ever shows the LAST visit, so carrying every
+ * visit of every appointment on every launch would bill rows nobody reads.
+ * Single-table, bounded, and the (appointment_id, visit_date) index serves it.
+ */
+async function openHistory(apptId) {
+  const a = appointments.find((x) => x.id === apptId);
+  if (!a) return;
+  let visits = recentVisits.filter((v) => v.appointment_id === apptId);
+  if (DB) {
+    try {
+      const res = await db(
+        "SELECT id, appointment_id, visit_date, outcome, notes, logged_by, created_at FROM app_appointments__visits WHERE appointment_id = ? ORDER BY visit_date DESC, id DESC LIMIT 100",
+        [apptId],
+      );
+      visits = res.rows ?? [];
+    } catch (e) { showError(e.message); return; }
+  }
+  visits = [...visits].sort((x, y) => String(y.visit_date).localeCompare(String(x.visit_date)) || String(y.id).localeCompare(String(x.id)));
+  openModal(`
+    <h2>${esc(a.title)} — history</h2>
+    <div data-testid="visit-history">
+      ${visits.length ? visits.map((v) => `
+        <div class="visit" data-testid="visit-row">
+          <strong>${esc(longDate(v.visit_date))}</strong>${v.outcome ? ` — ${esc(v.outcome)}` : ""}
+          <div class="muted tiny">Logged by ${esc(memberName(v.logged_by) || "someone")}${v.notes ? ` · ${esc(v.notes)}` : ""}</div>
+        </div>`).join("") : `<p class="muted tiny">No visits logged yet.</p>`}
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-testid="history-close" data-cancel>Close</button>
+    </div>`);
+}
+
+/* ── Events ────────────────────────────────────────────────────────────────── */
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.hasAttribute("data-add")) { openEditor(null); return; }
+  if (t.hasAttribute("data-edit")) { openEditor(appointments.find((a) => a.id === t.getAttribute("data-edit"))); return; }
+  if (t.hasAttribute("data-log")) { openVisitLogger(t.getAttribute("data-log")); return; }
+  if (t.hasAttribute("data-history")) { openHistory(t.getAttribute("data-history")).catch((err) => showError(err.message)); return; }
+  if (t.hasAttribute("data-delete")) { deleteAppointment(t.getAttribute("data-delete")).catch((err) => showError(err.message)); return; }
+  if (t.hasAttribute("data-cancel")) { closeModal(); return; }
+  if (t.hasAttribute("data-archived")) {
+    showArchived = !showArchived;
+    if (!showArchived) { render(); return; }
+    loadArchived().then(render).catch((err) => showError(err.message));
+    return;
+  }
+  if (t.hasAttribute("data-followup")) {
+    // A follow-up is a NEW one-off row rather than a second date on this one:
+    // the cadence keeps its own rhythm ("dental every six months") while the
+    // recheck the provider asked for lives and dies on its own.
+    const src = appointments.find((a) => a.id === t.getAttribute("data-followup"));
+    if (!src) return;
+    openEditor(null, {
+      person_id: src.person_id,
+      kind: src.kind,
+      title: `${src.title} — follow-up`,
+      interval_months: null,
+      next_due_date: "",
+    });
+    return;
+  }
+});
+
+refresh();
+</script>
+</body>
+</html>

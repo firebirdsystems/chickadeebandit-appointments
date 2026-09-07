@@ -1,0 +1,278 @@
+{
+  "$schema": "https://chickadeebandit.com/manifest-schema.json",
+  "id": "appointments",
+  "name": "Appointments & Check-ups",
+  "version": "1.0.0",
+  "description": "The recurring health cadence for everyone in the household — annual physical, dentist every six months, eye exam, well-child visits, therapy — with an emailed nudge when it is time to book and a visit history per person.",
+  "entrypoint": "index.html",
+  "runtime": "static",
+  "category": "health",
+  "tags": ["health", "appointments", "dentist", "doctor", "check-up", "reminders"],
+  "icon": "🩺",
+  "contexts": ["household"],
+  "kiosk": "never",
+  "storage": "db",
+  "data_access": {
+    "reads": ["family.members"],
+    "writes": []
+  },
+  "permissions": {
+    "default_audience": "everyone",
+    "requires_approval": false
+  },
+  "required_capabilities": ["cron", "email"],
+  "db_plaintext_columns": ["kind", "remind_scope", "visibility", "status", "scheduled_time", "interval_months", "lead_days", "remind"],
+  "row_policies": {
+    "appointments": {
+      "kind": "owner_or_visibility",
+      "member_column": "created_by",
+      "visibility_column": "visibility",
+      "everyone_values": ["household"],
+      "write_visibility_scoped": true,
+      "delete_adult_only": true,
+      "column_write_acls": {
+        "person_id": { "writable_by": ["adult"] },
+        "kind": { "writable_by": ["adult"] },
+        "title": { "writable_by": ["adult"] },
+        "provider_name": { "writable_by": ["adult"] },
+        "provider_phone": { "writable_by": ["adult"] },
+        "provider_url": { "writable_by": ["adult"] },
+        "interval_months": { "writable_by": ["adult"] },
+        "next_due_date": { "writable_by": ["adult"] },
+        "scheduled_date": { "writable_by": ["adult"] },
+        "scheduled_time": { "writable_by": ["adult"] },
+        "lead_days": { "writable_by": ["adult"] },
+        "remind": { "writable_by": ["adult"] },
+        "remind_scope": { "writable_by": ["adult"] },
+        "visibility": { "writable_by": ["adult"] },
+        "status": { "writable_by": ["adult"] },
+        "notes": { "writable_by": ["adult"] }
+      },
+      "max_rows": 2000
+    },
+    "visits": {
+      "kind": "inherit_visibility",
+      "fk_column": "appointment_id",
+      "parent_table": "appointments",
+      "writer_column": "logged_by",
+      "adults_bypass": true,
+      "column_write_acls": {
+        "appointment_id": { "writable_by": ["adult"] },
+        "visit_date": { "writable_by": ["adult"] },
+        "outcome": { "writable_by": ["adult"] },
+        "notes": { "writable_by": ["adult"] }
+      },
+      "retain_days": {
+        "default": 1825,
+        "timestamp_column": "visit_date",
+        "id_column": "id",
+        "override_key": "visit_history"
+      }
+    }
+  },
+  "preload": {
+    "appointments": {
+      "sql": "SELECT id, person_id, kind, title, provider_name, provider_phone, provider_url, interval_months, next_due_date, scheduled_date, scheduled_time, lead_days, remind, remind_scope, visibility, status, notes, last_reminded_at, created_by, created_at, updated_at FROM app_appointments__appointments WHERE status = 'active' ORDER BY (next_due_date = ''), next_due_date, id LIMIT 500"
+    },
+    "recent_visits": {
+      "sql": "SELECT id, appointment_id, visit_date, outcome, notes, logged_by, created_at FROM app_appointments__visits ORDER BY visit_date DESC, id DESC LIMIT 200"
+    }
+  },
+  "glance": {
+    "source": {
+      "kind": "sql",
+      "query": "SELECT COUNT(*) AS due_count FROM app_appointments__appointments WHERE status = 'active' AND remind = 1 AND scheduled_date = '' AND next_due_date <> '' AND next_due_date IS date(next_due_date) AND next_due_date <= date(:today, '+' || lead_days || ' days') LIMIT 1"
+    },
+    "display": { "template": "badge", "count": "due_count", "label": "to book", "severity": "warn" }
+  },
+  "agenda": {
+    "kind": "reminder",
+    "label": "Appointments",
+    "source": {
+      "kind": "sql",
+      "query": "SELECT id AS id, title AS title, provider_name AS subtitle, person_id AS member_id, CASE WHEN scheduled_time <> '' THEN scheduled_time ELSE :today END AS when_at FROM app_appointments__appointments WHERE status = 'active' AND scheduled_date = :today ORDER BY (scheduled_time = ''), scheduled_time, id LIMIT 20"
+    }
+  },
+  "reports": {
+    "views": [
+      {
+        "id": "visit_history",
+        "title": "Check-up history",
+        "description": "Every logged visit, newest first. Hand this to a new provider or a school form.",
+        "source": {
+          "kind": "sql",
+          "query": "SELECT v.visit_date AS visit_date, a.person_id AS person, a.title AS appointment, a.provider_name AS provider, v.outcome AS outcome FROM app_appointments__visits v JOIN app_appointments__appointments a ON a.id = v.appointment_id WHERE v.visit_date >= :range_start AND v.visit_date <= :range_end ORDER BY v.visit_date DESC"
+        },
+        "columns": [
+          { "key": "visit_date", "label": "Date", "format": "date" },
+          { "key": "person", "label": "Who", "format": "member" },
+          { "key": "appointment", "label": "Appointment" },
+          { "key": "provider", "label": "Provider" },
+          { "key": "outcome", "label": "Outcome" }
+        ]
+      },
+      {
+        "id": "due_schedule",
+        "title": "What's due",
+        "description": "Every appointment being tracked and when the next one is due.",
+        "source": {
+          "kind": "sql",
+          "query": "SELECT a.person_id AS person, a.title AS appointment, a.kind AS kind, a.interval_months AS interval_months, a.next_due_date AS next_due_date, a.scheduled_date AS scheduled_date FROM app_appointments__appointments a WHERE a.status = 'active' ORDER BY (a.next_due_date = ''), a.next_due_date"
+        },
+        "columns": [
+          { "key": "person", "label": "Who", "format": "member" },
+          { "key": "appointment", "label": "Appointment" },
+          { "key": "kind", "label": "Kind" },
+          { "key": "interval_months", "label": "Every (months)" },
+          { "key": "next_due_date", "label": "Due", "format": "date" },
+          { "key": "scheduled_date", "label": "Booked", "format": "date" }
+        ]
+      }
+    ]
+  },
+  "date_reminders": {
+    "table": "appointments",
+    "date_column": "next_due_date",
+    "lead_days_column": "lead_days",
+    "default_lead_days": 26,
+    "enabled_column": "remind",
+    "title_column": "title",
+    "kind_column": "kind",
+    "owner_column": "person_id",
+    "visibility_column": "remind_scope",
+    "everyone_values": ["household"],
+    "last_reminded_column": "last_reminded_at",
+    "on_no_recipients": "skip"
+  },
+  "automation_actions": {
+    "add_appointment": {
+      "title": "Start tracking a check-up",
+      "description": "Begin tracking a recurring health appointment when another app records the reason for it — a birth in baby-log seeding the well-child schedule, a milestone that calls for a first dentist visit.",
+      "params": {
+        "person_id": {
+          "type": "member",
+          "label": "Who it is for",
+          "required": true
+        },
+        "created_by": {
+          "type": "member",
+          "label": "Added by",
+          "required": true
+        },
+        "title": {
+          "type": "text",
+          "label": "Appointment",
+          "required": true
+        },
+        "kind": {
+          "type": "text",
+          "label": "Kind",
+          "default": "other",
+          "options": ["physical", "dental", "vision", "wellchild", "therapy", "specialist", "screening", "vaccine", "other"]
+        },
+        "interval_months": {
+          "type": "integer",
+          "label": "Due every (months)",
+          "default": 12,
+          "min": 1
+        },
+        "next_due_date": {
+          "type": "text",
+          "label": "Next due (yyyy-mm-dd)",
+          "default": ""
+        }
+      },
+      "dedupe": {
+        "table": "appointments",
+        "column": "source_event_id"
+      },
+      "steps": [
+        {
+          "op": "insert",
+          "table": "appointments",
+          "values": {
+            "id": "$uuid",
+            "person_id": ":person_id",
+            "kind": ":kind",
+            "title": ":title",
+            "interval_months": ":interval_months",
+            "next_due_date": ":next_due_date",
+            "created_by": ":created_by",
+            "created_at": "$now",
+            "updated_at": "$now",
+            "source_event_id": "$event_id"
+          }
+        }
+      ]
+    }
+  },
+  "member_references": {
+    "appointments": [
+      {
+        "column": "person_id",
+        "on_removed": "delete",
+        "id_column": "id",
+        "dependent_tables": [{ "table": "visits", "foreign_key": "appointment_id" }]
+      },
+      { "column": "created_by", "on_removed": "keep" }
+    ],
+    "visits": { "column": "logged_by", "on_removed": "keep" }
+  },
+  "delete_cascades": {
+    "appointments": [{ "table": "visits", "foreign_key": "appointment_id" }]
+  },
+  "publishes": [
+    "appointment.due_soon",
+    "appointment.booked",
+    "appointment.cancelled",
+    "appointment.visit_logged"
+  ],
+  "publish_acls": {
+    "appointment.due_soon": { "require_role": "adult" },
+    "appointment.booked": { "require_role": "adult" },
+    "appointment.cancelled": { "require_role": "adult" },
+    "appointment.visit_logged": { "require_role": "adult" }
+  },
+  "suggested_automations": [
+    {
+      "title": "Put \"book the dentist\" on the calendar",
+      "description": "When a check-up's due date is set or rolls forward after a visit, put an all-day entry on the calendar the day it is time to BOOK — a month ahead, by default — rather than the day it is due. Moving the due date or the lead time moves the entry that is already there instead of adding a second one.",
+      "trigger_event": "appointment.due_soon",
+      "target_app_id": "calendar",
+      "action_id": "create_event",
+      "param_map": {
+        "title": { "kind": "payload_field", "value": "review_title" },
+        "event_date": { "kind": "payload_field", "value": "remind_on" },
+        "description": { "kind": "payload_field", "value": "summary" },
+        "source_ref_id": { "kind": "payload_field", "value": "source_ref_id" }
+      }
+    },
+    {
+      "title": "Put the booked appointment on the calendar",
+      "description": "Once a slot is actually booked, put it on the calendar on the day itself, with the provider and time in the description. Re-booking moves the entry rather than leaving the old day behind.",
+      "trigger_event": "appointment.booked",
+      "target_app_id": "calendar",
+      "action_id": "create_event",
+      "param_map": {
+        "title": { "kind": "payload_field", "value": "review_title" },
+        "event_date": { "kind": "payload_field", "value": "scheduled_date" },
+        "description": { "kind": "payload_field", "value": "summary" },
+        "source_ref_id": { "kind": "payload_field", "value": "source_ref_id" }
+      }
+    },
+    {
+      "title": "Take the appointment back off the calendar",
+      "description": "The other half of the two rules above, and it only does anything if you have one of them. When a booking is cleared, the appointment is archived or deleted, or its reminder is switched off, the calendar entries it put there stop showing. Add this alongside them, or an entry outlives the appointment it was made for.",
+      "trigger_event": "appointment.cancelled",
+      "target_app_id": "calendar",
+      "action_id": "retract_dated_event",
+      "param_map": {
+        "source_ref_id": { "kind": "payload_field", "value": "source_ref_id" }
+      }
+    }
+  ],
+  "nav": { "label": "Appointments" },
+  "resource_limits": {
+    "max_db_bytes": 10485760
+  }
+}

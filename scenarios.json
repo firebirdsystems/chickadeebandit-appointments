@@ -1,0 +1,396 @@
+{
+  "scenarios": [
+    {
+      "name": "a parent's private appointment is invisible to the other parent, and unwritable by them",
+      "members": {
+        "parent_a": "adult",
+        "parent_b": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "parent_a",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('p-private', ?, 'dental', 'Dentist', 6, '2030-03-14', 30, 1, 'private', 'private', 'active', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "{{parent_a}}",
+            "{{parent_a}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_a",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-private'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-private'",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "UPDATE app_appointments__appointments SET kind = 'vision' WHERE id = 'p-private'",
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_a",
+          "sql": "SELECT kind FROM app_appointments__appointments WHERE id = 'p-private'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "kind": "dental"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "DELETE FROM app_appointments__appointments WHERE id = 'p-private'",
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_a",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-private'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "a parent creates an appointment FOR a child without it becoming their own",
+      "members": {
+        "parent": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('p-forkid', ?, 'wellchild', 'Well-child visit', 12, '2030-05-02', 30, 1, 'household', 'household', 'active', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "{{kid}}",
+            "{{parent}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-forkid' AND person_id = ?",
+          "params": [
+            "{{kid}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-forkid' AND person_id = ?",
+          "params": [
+            "{{parent}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-forkid' AND created_by = ?",
+          "params": [
+            "{{parent}}"
+          ],
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-forkid'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "a child reads the household's appointments but cannot create, change, or delete one",
+      "members": {
+        "parent": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('p-shared', 'seed-person', 'dental', ?, 6, '2030-03-14', 30, 1, 'household', 'household', 'active', 'seed', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "Household Dentist"
+          ]
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-shared'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('p-kid-made', ?, 'other', 'Snow day', NULL, '2030-01-01', 30, 1, 'household', 'household', 'active', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "{{kid}}",
+            "{{kid}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_appointments__appointments SET kind = 'vision' WHERE id = 'p-shared'",
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "DELETE FROM app_appointments__appointments WHERE id = 'p-shared'",
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT kind FROM app_appointments__appointments WHERE id = 'p-shared'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "kind": "dental"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "visits follow their appointment: a child may read one but not log one",
+      "members": {
+        "parent": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('p-visits', 'seed-person', 'dental', ?, 6, '2030-03-14', 30, 1, 'household', 'household', 'active', 'seed', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "Shared Dentist"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('p-hidden', 'seed-person', 'therapy', ?, 1, '2030-03-14', 26, 1, 'private', 'private', 'active', 'nobody-here', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "Someone Else's Therapy"
+          ]
+        },
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, notes, created_at) VALUES ('v-hidden', 'p-hidden', '2026-02-01', 'nobody-here', ?, '', '2026-02-01T00:00:00.000Z')",
+          "params": [
+            "Confidential"
+          ]
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, notes, created_at) VALUES ('v-1', 'p-visits', '2026-03-14', ?, 'All clear', '', '2026-03-14T00:00:00.000Z')",
+          "params": [
+            "{{parent}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "SELECT id FROM app_appointments__visits WHERE appointment_id = 'p-visits'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, notes, created_at) VALUES ('v-kid', 'p-visits', '2026-03-15', ?, 'Fine', '', '2026-03-15T00:00:00.000Z')",
+          "params": [
+            "{{kid}}"
+          ],
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id FROM app_appointments__visits",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "only an adult may publish an event another app turns into a calendar entry",
+      "members": {
+        "parent": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "publish",
+          "as": "parent",
+          "type": "appointment.due_soon",
+          "payload": {
+            "source_ref_id": "appointments:p1",
+            "title": "Dentist",
+            "remind_on": "2030-02-14",
+            "review_title": "Book: Dentist",
+            "due_date": "2030-03-14"
+          },
+          "expect": {
+            "status": 201
+          }
+        },
+        {
+          "action": "publish",
+          "as": "kid",
+          "type": "appointment.due_soon",
+          "payload": {
+            "source_ref_id": "appointments:p1",
+            "title": "Dentist",
+            "remind_on": "2030-02-14",
+            "review_title": "Book: Dentist",
+            "due_date": "2030-03-14"
+          },
+          "expect": {
+            "status": 403
+          }
+        },
+        {
+          "action": "publish",
+          "as": "parent",
+          "type": "appointment.due_soon",
+          "payload": {
+            "source_ref_id": "appointments:p1",
+            "title": "Dentist",
+            "review_title": "Book: Dentist"
+          },
+          "expect": {
+            "status": 400
+          }
+        }
+      ]
+    },
+    {
+      "name": "an impossible date is refused at the column, not normalized into it",
+      "members": {
+        "parent": "adult"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES (?, ?, 'dental', 'Dentist', 6, ?, 30, 1, 'household', 'household', 'active', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "d-ok",
+            "{{parent}}",
+            "2026-03-14",
+            "{{parent}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES (?, ?, 'dental', 'Dentist', 6, ?, 30, 1, 'household', 'household', 'active', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "d-feb31",
+            "{{parent}}",
+            "2026-02-31",
+            "{{parent}}"
+          ],
+          "expect": {
+            "status": 400
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES (?, ?, 'dental', 'Dentist', 6, ?, 30, 1, 'household', 'household', 'active', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "d-junk",
+            "{{parent}}",
+            "later",
+            "{{parent}}"
+          ],
+          "expect": {
+            "status": 400
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent",
+          "sql": "SELECT id FROM app_appointments__appointments",
+          "expect": {
+            "status": 200,
+            "rowCount": 1
+          }
+        }
+      ]
+    }
+  ]
+}

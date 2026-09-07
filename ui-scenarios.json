@@ -1,0 +1,533 @@
+{
+  "scenarios": [
+    {
+      "name": "a check-up added with a due date inside its lead window shows up as one to book",
+      "members": {
+        "adult": "adult"
+      },
+      "steps": [
+        {
+          "action": "open"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"add-appointment\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-title\"]",
+          "value": "Dentist"
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"field-kind\"]",
+          "value": "dental"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-due\"]",
+          "value": "2030-06-15"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "state": "detached"
+        },
+        {
+          "action": "reload"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"appt-row\"]",
+          "count": 1
+        },
+        {
+          "action": "expectText",
+          "text": "Dentist",
+          "selector": "[data-testid=\"appt-list\"]"
+        },
+        {
+          "action": "expectText",
+          "text": "Dental cleaning",
+          "selector": "[data-testid=\"appt-meta\"]"
+        },
+        {
+          "action": "expectText",
+          "text": "0",
+          "selector": "[data-testid=\"stat-to-book\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"edit-appointment\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-scheduled-date\"]",
+          "value": "2030-06-10"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-scheduled-time\"]",
+          "value": "10:30"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "state": "detached"
+        },
+        {
+          "action": "reload"
+        },
+        {
+          "action": "expectText",
+          "text": "Booked Jun 10",
+          "selector": "[data-testid=\"appt-booked\"]"
+        },
+        {
+          "action": "expectText",
+          "text": "10:30 AM",
+          "selector": "[data-testid=\"appt-booked\"]"
+        }
+      ]
+    },
+    {
+      "name": "logging a visit rolls the cadence forward and clears the booking",
+      "members": {
+        "adult": "adult"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, scheduled_date, scheduled_time, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('u-roll', 'seed-person', 'dental', ?, 6, '2026-03-14', '2026-03-14', '09:00', 30, 1, 'household', 'household', 'active', 'seed', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "Rolling Dentist"
+          ]
+        },
+        {
+          "action": "open"
+        },
+        {
+          "action": "expectText",
+          "text": "Rolling Dentist",
+          "selector": "[data-testid=\"appt-list\"]"
+        },
+        {
+          "action": "expectVisible",
+          "selector": "[data-testid=\"appt-booked\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"log-visit\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"visit-form\"]"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-visit-date\"]",
+          "value": "2026-03-14"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-outcome\"]",
+          "value": "All clear"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"visit-submit\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"visit-form\"]",
+          "state": "detached"
+        },
+        {
+          "action": "reload"
+        },
+        {
+          "action": "expectText",
+          "text": "Rolling Dentist",
+          "selector": "[data-testid=\"appt-list\"]"
+        },
+        {
+          "action": "expectText",
+          "text": "last Mar 14",
+          "selector": "[data-testid=\"appt-meta\"]"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"appt-booked\"]",
+          "count": 0
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"edit-appointment\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-history\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"visit-history\"]"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"visit-row\"]",
+          "count": 1
+        },
+        {
+          "action": "expectText",
+          "text": "All clear",
+          "selector": "[data-testid=\"visit-history\"]"
+        }
+      ]
+    },
+    {
+      "name": "one parent's private appointment never renders for the other, and never reaches the calendar",
+      "members": {
+        "parent_a": "adult",
+        "parent_b": "adult"
+      },
+      "steps": [
+        {
+          "action": "open",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"add-appointment\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-title\"]",
+          "value": "Confidential Referral",
+          "as": "parent_a"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-due\"]",
+          "value": "2030-06-15",
+          "as": "parent_a"
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"field-visibility\"]",
+          "value": "private",
+          "as": "parent_a"
+        },
+        {
+          "action": "expectText",
+          "text": "private appointment publishes nothing",
+          "selector": "[data-testid=\"lead-note\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "state": "detached",
+          "as": "parent_a"
+        },
+        {
+          "action": "reload",
+          "as": "parent_a"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"appt-row\"]",
+          "count": 1,
+          "as": "parent_a"
+        },
+        {
+          "action": "expectVisible",
+          "selector": "[data-testid=\"appt-private\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "open",
+          "as": "parent_b"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"appt-row\"]",
+          "count": 0,
+          "as": "parent_b"
+        },
+        {
+          "action": "expectNoText",
+          "text": "Confidential Referral",
+          "as": "parent_b"
+        },
+        {
+          "action": "open",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"edit-appointment\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"field-visibility\"]",
+          "value": "household",
+          "as": "parent_a"
+        },
+        {
+          "action": "expectText",
+          "text": "Publishes a booking reminder",
+          "selector": "[data-testid=\"lead-note\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "state": "detached",
+          "as": "parent_a"
+        },
+        {
+          "action": "open",
+          "as": "parent_b"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"appt-row\"]",
+          "count": 1,
+          "as": "parent_b"
+        },
+        {
+          "action": "expectText",
+          "text": "Confidential Referral",
+          "selector": "[data-testid=\"appt-list\"]",
+          "as": "parent_b"
+        }
+      ]
+    },
+    {
+      "name": "a child sees the household's check-ups and is given no way to change them",
+      "members": {
+        "adult": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('u-shared', 'seed-person', 'dental', ?, 6, '2030-03-14', 30, 1, 'household', 'household', 'active', 'seed', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "Household Dentist"
+          ]
+        },
+        {
+          "action": "open",
+          "as": "kid"
+        },
+        {
+          "action": "expectText",
+          "text": "Household Dentist",
+          "selector": "[data-testid=\"appt-list\"]",
+          "as": "kid"
+        },
+        {
+          "action": "expectVisible",
+          "selector": "[data-testid=\"read-only-note\"]",
+          "as": "kid"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"add-appointment\"]",
+          "count": 0,
+          "as": "kid"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"edit-appointment\"]",
+          "count": 0,
+          "as": "kid"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"log-visit\"]",
+          "count": 0,
+          "as": "kid"
+        },
+        {
+          "action": "open",
+          "as": "adult"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"add-appointment\"]",
+          "count": 1,
+          "as": "adult"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"edit-appointment\"]",
+          "count": 1,
+          "as": "adult"
+        }
+      ]
+    },
+    {
+      "name": "a monthly cadence cannot be asked for a month's notice, a yearly one can",
+      "members": {
+        "adult": "adult"
+      },
+      "steps": [
+        {
+          "action": "open"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"add-appointment\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]"
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"field-interval\"]",
+          "value": "12"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"field-lead\"] option[value=\"30\"]",
+          "count": 1
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"field-lead\"] option[value=\"90\"]",
+          "count": 1
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"field-interval\"]",
+          "value": "1"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"field-lead\"] option[value=\"30\"]",
+          "count": 0
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"field-lead\"] option[value=\"26\"]",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "archiving takes a check-up off the list without losing it",
+      "members": {
+        "adult": "adult"
+      },
+      "steps": [
+        {
+          "action": "seedRaw",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('u-arch', 'seed-person', 'vision', ?, 24, '2030-03-14', 30, 1, 'household', 'household', 'active', 'seed', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "Old Eye Exam"
+          ]
+        },
+        {
+          "action": "open"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"appt-row\"]",
+          "count": 1
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"edit-appointment\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]"
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"field-status\"]",
+          "value": "archived"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "state": "detached"
+        },
+        {
+          "action": "reload"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"appt-row\"]",
+          "count": 0
+        },
+        {
+          "action": "expectNoText",
+          "text": "Old Eye Exam"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"toggle-archived\"]"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-row\"]"
+        },
+        {
+          "action": "expectText",
+          "text": "Old Eye Exam",
+          "selector": "[data-testid=\"appt-list\"]"
+        }
+      ]
+    }
+  ]
+}
