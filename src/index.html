@@ -17,10 +17,10 @@
       --accent-hover: var(--hub-primary-hover, #374151);
       --accent-fg: var(--hub-primary-fg, #ffffff);
       --radius: var(--hub-radius, 10px);
-      --green: #047857; --green-soft: #d1fae5;
-      --amber: #b45309; --amber-soft: #fef3c7;
-      --red: #b91c1c; --red-soft: #fee2e2;
-      --blue: #1d4ed8; --blue-soft: #dbeafe;
+      --green: var(--hub-tint-success-fg, #047857); --green-soft: var(--hub-tint-success, #d1fae5);
+      --amber: var(--hub-tint-warning-fg, #b45309); --amber-soft: var(--hub-tint-warning, #fef3c7);
+      --red: var(--hub-tint-danger-fg, #b91c1c); --red-soft: var(--hub-tint-danger, #fee2e2);
+      --blue: var(--hub-tint-info-fg, #1d4ed8); --blue-soft: var(--hub-tint-info, #dbeafe);
       --shadow: 0 1px 3px rgba(15, 23, 42, .07);
     }
     body {
@@ -63,7 +63,7 @@
     .row-side { flex-shrink: 0; text-align: right; display: grid; gap: 4px; justify-items: end; }
     .pill {
       display: inline-flex; align-items: center; min-height: 20px; padding: 1px 8px;
-      border-radius: 999px; white-space: nowrap; background: #f1f5f9; color: var(--muted);
+      border-radius: 999px; white-space: nowrap; background: var(--bg); color: var(--muted);
       font-size: .72rem; font-weight: 800;
     }
     .pill.soon { background: var(--red-soft); color: var(--red); }
