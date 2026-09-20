@@ -1,5 +1,7 @@
 # Appointments & Check-ups
 
+A [Chickadee Bandit](https://chickadeebandit.com/app-library/appointments) app.
+
 The recurring health cadence for everyone in the household — annual physical,
 dentist every six months, eye exam, well-child visits, therapy, screenings —
 with a "time to book" email ahead of each due date and a visit history per
