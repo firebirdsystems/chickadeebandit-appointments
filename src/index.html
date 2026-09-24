@@ -671,7 +671,7 @@ function render() {
         <h1>Appointments &amp; Check-ups</h1>
         <p class="muted tiny">Everyone's recurring health cadence, and a nudge when it is time to book.</p>
         ${reminderStatus && !reminderStatus.entitled
-          ? `<p class="muted tiny" data-testid="upgrade-note">📬 Emailed "time to book" reminders are part of the ${esc(reminderStatus.bundle ?? "premium")} bundle — the countdown and the calendar entry work either way.</p>`
+          ? `<p class="muted tiny" data-testid="upgrade-note">📬 Emailed "time to book" reminders are paused while the household's plan is inactive — the countdown and the calendar entry work either way.</p>`
           : ""}
       </div>
       ${canManage() ? `<button class="btn" data-testid="add-appointment" data-add>+ Add</button>` : ""}
@@ -924,7 +924,7 @@ function leadNote(visibility, scope, personId) {
     : "Publishes a booking reminder other apps can act on — enable the Calendar automation in Settings to see it there.");
   if (!reminderStatus) return parts.join(" ");
   if (!reminderStatus.entitled) {
-    parts.push(`Email reminders need the ${reminderStatus.bundle ?? "premium"} bundle.`);
+    parts.push("Email reminders resume when the household's plan is active.");
     return parts.join(" ");
   }
   // `hasEmail` is absent on an older hub, and absent is not false — only warn

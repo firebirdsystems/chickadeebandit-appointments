@@ -12,10 +12,10 @@ It fills the gap between `home-maintenance` (house systems),
 recurring medical cadence. `medication-tracker` is daily doses;
 `health-cards` is static allergy and insurance information.
 
-Premium-native: `required_capabilities: ["cron", "email"]`, so it installs only
-under the premium bundle, like `subscriptions` and `vehicle-maintenance`. The
-countdown, the badge, and the published events work regardless; the emailed
-nudge is the part the bundle buys.
+Declares `required_capabilities: ["cron", "email"]`, like `subscriptions` and
+`vehicle-maintenance`; every live plan includes both. The countdown, the badge,
+and the published events work regardless; the emailed nudge pauses while the
+household's plan is inactive.
 
 ## Two dates, one reminder anchor
 
