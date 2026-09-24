@@ -178,6 +178,7 @@
         },
         "next_due_date": {
           "type": "text",
+          "format": "date",
           "label": "Next due (yyyy-mm-dd)",
           "default": ""
         }
