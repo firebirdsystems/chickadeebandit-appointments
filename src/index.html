@@ -109,7 +109,7 @@
 </div>
 
 <script type="module">
-import { esc, hubConfirm, searchMatch, hubToday, createDbHelper } from "/hub-sdk.js";
+import { esc, hubConfirm, searchMatch, hubToday, createDbHelper, glyph } from "/hub-sdk.js";
 
 // The household's calendar day as a Date, for the pure helpers in logic.js.
 // Those helpers default their date parameter to `new Date()` — the VIEWER
@@ -609,7 +609,7 @@ function renderAppointment(a) {
   if (last) bits.push(`last ${shortDate(last.visit_date)}`);
   return `
     <div class="row ${a.status === "archived" ? "archived" : ""}" data-testid="appt-row" data-appt-id="${esc(a.id)}">
-      <div class="row-icon" aria-hidden="true">${meta.icon}</div>
+      <div class="row-icon" aria-hidden="true">${glyph(meta.glyph)}</div>
       <div class="row-body">
         <div class="row-title" data-testid="appt-title">${esc(a.title)}</div>
         <div class="row-meta" data-testid="appt-meta">${esc(bits.filter(Boolean).join(" · "))}</div>
@@ -671,7 +671,7 @@ function render() {
         <h1>Appointments &amp; Check-ups</h1>
         <p class="muted tiny">Everyone's recurring health cadence, and a nudge when it is time to book.</p>
         ${reminderStatus && !reminderStatus.entitled
-          ? `<p class="muted tiny" data-testid="upgrade-note">📬 Emailed "time to book" reminders are paused while the household's plan is inactive — the countdown and the calendar entry work either way.</p>`
+          ? `<p class="muted tiny" data-testid="upgrade-note">${glyph("bell")} Emailed "time to book" reminders are paused while the household's plan is inactive — the countdown and the calendar entry work either way.</p>`
           : ""}
       </div>
       ${canManage() ? `<button class="btn" data-testid="add-appointment" data-add>+ Add</button>` : ""}
@@ -752,7 +752,7 @@ function openEditor(existing, prefill = null) {
     ? normalizeIntervalMonths(a.interval_months)
     : (seed.interval_months !== undefined ? normalizeIntervalMonths(seed.interval_months) : suggestedIntervalMonths(kind));
   const personOptions = members.map((m) => `<option value="${esc(m.id)}" ${person === m.id ? "selected" : ""}>${esc(m.name)}</option>`).join("");
-  const kindOptions = KINDS.map((k) => `<option value="${k.value}" ${kind === k.value ? "selected" : ""}>${k.icon} ${esc(k.label)}</option>`).join("");
+  const kindOptions = KINDS.map((k) => `<option value="${k.value}" ${kind === k.value ? "selected" : ""}>${esc(k.label)}</option>`).join("");
   const intervalOptions = [
     `<option value="" ${interval == null ? "selected" : ""}>One-off (no repeat)</option>`,
     ...INTERVAL_CHOICES.concat(interval && !INTERVAL_CHOICES.includes(interval) ? [interval] : [])

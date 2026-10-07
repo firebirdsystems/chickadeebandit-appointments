@@ -18,15 +18,15 @@ export { isAdult };
  * next to it wherever a preset is applied.
  */
 export const KINDS = [
-  { value: "physical",   label: "Annual physical",  icon: "🩺", months: 12 },
-  { value: "dental",     label: "Dental cleaning",  icon: "🦷", months: 6 },
-  { value: "vision",     label: "Eye exam",         icon: "👓", months: 12 },
-  { value: "wellchild",  label: "Well-child visit", icon: "🧸", months: 12 },
-  { value: "therapy",    label: "Therapy",          icon: "💬", months: 1 },
-  { value: "specialist", label: "Specialist",       icon: "🏥", months: 6 },
-  { value: "screening",  label: "Screening",        icon: "🔬", months: 12 },
-  { value: "vaccine",    label: "Vaccination",      icon: "💉", months: 12 },
-  { value: "other",      label: "Other",            icon: "📌", months: 12 },
+  { value: "physical",   label: "Annual physical",  glyph: "stethoscope", months: 12 },
+  { value: "dental",     label: "Dental cleaning",  glyph: "tooth", months: 6 },
+  { value: "vision",     label: "Eye exam",         glyph: "glasses", months: 12 },
+  { value: "wellchild",  label: "Well-child visit", glyph: "stroller", months: 12 },
+  { value: "therapy",    label: "Therapy",          glyph: "messages", months: 1 },
+  { value: "specialist", label: "Specialist",       glyph: "cross-card", months: 6 },
+  { value: "screening",  label: "Screening",        glyph: "magnifier", months: 12 },
+  { value: "vaccine",    label: "Vaccination",      glyph: "syringe", months: 12 },
+  { value: "other",      label: "Other",            glyph: "pin", months: 12 },
 ];
 
 export const CADENCE_NOTE = "A typical cadence, not medical advice — ask your provider.";
