@@ -1,0 +1,375 @@
+{
+  "seed": [
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-01",
+        "{{me}}",
+        "dental",
+        "Dentist check-up",
+        "Maple Street Dental",
+        "555-0101",
+        "{{date:20}}",
+        "{{me}}",
+        6
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-02",
+        "{{me}}",
+        "physical",
+        "Annual physical",
+        "Dr. Okafor",
+        "555-0102",
+        "{{date:95}}",
+        "{{me}}",
+        12
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-03",
+        "{{me}}",
+        "vision",
+        "Eye exam",
+        "Clearview Optometry",
+        "555-0103",
+        "{{date:-12}}",
+        "{{me}}",
+        24
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, scheduled_date, scheduled_time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-04",
+        "{{partner}}",
+        "dental",
+        "Dentist check-up",
+        "Maple Street Dental",
+        "555-0101",
+        "{{date:34}}",
+        "{{me}}",
+        6,
+        "{{date:14}}",
+        "09:30"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-05",
+        "{{partner}}",
+        "screening",
+        "Skin check",
+        "Lakeside Dermatology",
+        "555-0104",
+        "{{date:150}}",
+        "{{me}}",
+        12
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, scheduled_date, scheduled_time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-06",
+        "{{partner}}",
+        "therapy",
+        "Physio follow-up",
+        "Northside Physio",
+        "555-0105",
+        "{{date:9}}",
+        "{{me}}",
+        "{{date:9}}",
+        "09:30"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-07",
+        "{{child}}",
+        "wellchild",
+        "Well-child visit",
+        "Dr. Lindqvist",
+        "555-0106",
+        "{{date:45}}",
+        "{{me}}",
+        12
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, scheduled_date, scheduled_time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-08",
+        "{{child}}",
+        "dental",
+        "Dentist check-up",
+        "Maple Street Dental",
+        "555-0101",
+        "{{date:5}}",
+        "{{me}}",
+        6,
+        "{{date:5}}",
+        "09:30"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-09",
+        "{{child}}",
+        "vaccine",
+        "Flu shot",
+        "Corner Pharmacy",
+        "555-0107",
+        "{{date:-3}}",
+        "{{me}}",
+        12
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-10",
+        "{{child}}",
+        "vision",
+        "Eye exam",
+        "Clearview Optometry",
+        "555-0103",
+        "{{date:210}}",
+        "{{me}}",
+        12
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-11",
+        "{{child2}}",
+        "wellchild",
+        "Well-child visit",
+        "Dr. Lindqvist",
+        "555-0106",
+        "{{date:70}}",
+        "{{me}}",
+        12
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-12",
+        "{{child2}}",
+        "dental",
+        "Dentist check-up",
+        "Maple Street Dental",
+        "555-0101",
+        "{{date:28}}",
+        "{{me}}",
+        6
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-13",
+        "{{child2}}",
+        "vaccine",
+        "Flu shot",
+        "Corner Pharmacy",
+        "555-0107",
+        "{{date:-3}}",
+        "{{me}}",
+        12
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, provider_name, provider_phone, next_due_date, created_by, interval_months, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','-200 days'), datetime('now','-3 days'))",
+      "params": [
+        "ap-14",
+        "{{child2}}",
+        "specialist",
+        "Allergy review",
+        "Dr. Petrov",
+        "555-0108",
+        "{{date:120}}",
+        "{{me}}",
+        6
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-180 days'))",
+      "params": [
+        "vi-01",
+        "ap-01",
+        "{{date:-180}}",
+        "{{me}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-365 days'))",
+      "params": [
+        "vi-02",
+        "ap-01",
+        "{{date:-365}}",
+        "{{me}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-360 days'))",
+      "params": [
+        "vi-03",
+        "ap-02",
+        "{{date:-360}}",
+        "{{partner}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-180 days'))",
+      "params": [
+        "vi-04",
+        "ap-04",
+        "{{date:-180}}",
+        "{{me}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-365 days'))",
+      "params": [
+        "vi-05",
+        "ap-04",
+        "{{date:-365}}",
+        "{{me}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-360 days'))",
+      "params": [
+        "vi-06",
+        "ap-05",
+        "{{date:-360}}",
+        "{{partner}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-360 days'))",
+      "params": [
+        "vi-07",
+        "ap-07",
+        "{{date:-360}}",
+        "{{me}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-180 days'))",
+      "params": [
+        "vi-08",
+        "ap-08",
+        "{{date:-180}}",
+        "{{me}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-365 days'))",
+      "params": [
+        "vi-09",
+        "ap-08",
+        "{{date:-365}}",
+        "{{partner}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-360 days'))",
+      "params": [
+        "vi-10",
+        "ap-09",
+        "{{date:-360}}",
+        "{{me}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-360 days'))",
+      "params": [
+        "vi-11",
+        "ap-10",
+        "{{date:-360}}",
+        "{{me}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-360 days'))",
+      "params": [
+        "vi-12",
+        "ap-11",
+        "{{date:-360}}",
+        "{{partner}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-180 days'))",
+      "params": [
+        "vi-13",
+        "ap-12",
+        "{{date:-180}}",
+        "{{me}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-365 days'))",
+      "params": [
+        "vi-14",
+        "ap-12",
+        "{{date:-365}}",
+        "{{me}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-360 days'))",
+      "params": [
+        "vi-15",
+        "ap-13",
+        "{{date:-360}}",
+        "{{partner}}",
+        "All clear"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-180 days'))",
+      "params": [
+        "vi-16",
+        "ap-14",
+        "{{date:-180}}",
+        "{{me}}",
+        "Follow up next visit"
+      ]
+    },
+    {
+      "sql": "INSERT INTO app_appointments__visits (id, appointment_id, visit_date, logged_by, outcome, created_at) VALUES (?, ?, ?, ?, ?, datetime('now','-365 days'))",
+      "params": [
+        "vi-17",
+        "ap-14",
+        "{{date:-365}}",
+        "{{me}}",
+        "All clear"
+      ]
+    }
+  ]
+}
