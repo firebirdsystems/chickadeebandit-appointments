@@ -167,7 +167,8 @@ const NOT_YOURS = "That appointment changed or became private somewhere else —
 function assertChanged(result, message = NOT_YOURS) {
   if (!DB) return;
   if (Number(result?.changed ?? 0) > 0) return;
-  throw new Error(message);
+  // Marked as wording written for the reader, so a form can show it as is.
+  throw Object.assign(new Error(message), { forUser: true });
 }
 
 /* ── First-render reads ──────────────────────────────────────────────────────
@@ -335,6 +336,25 @@ async function refresh() {
 }
 
 function showError(msg) { error = msg; render(); }
+// Only wording this app wrote for the reader is shown; the hub's own error text
+// goes to the console and the reader gets the fixed line.
+function failText(e, line) {
+  if (!e?.forUser) console.error(e);
+  return e?.forUser ? e.message : line;
+}
+
+// A save the hub refused: the form stays open as typed, says so in its own
+// error line, and its button works again. Only this app's own wording is
+// shown; anything else reads "Couldn’t save".
+function saveFailed(e) {
+  const msg = failText(e, "Couldn’t save — try again.");
+  const line = modalEl?.querySelector("[data-form-error]");
+  if (!line) { showError(msg); return; }
+  line.textContent = msg;
+  line.hidden = false;
+  const btn = modalEl.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label ?? btn.textContent; }
+}
 
 function handleDeepLink() {
   const id = new URLSearchParams(window.location.search).get("appointmentId");
@@ -459,32 +479,36 @@ async function saveAppointment(fields, existingId) {
     // on screen to say so. Clearing cannot double-send; the hub's per-recipient
     // send log still holds the previous occurrence.
     const dueMoved = String(prev.next_due_date ?? "") !== String(fields.next_due_date ?? "");
-    appointments[idx] = { ...prev, ...fields, updated_at: now };
-    if (dueMoved) appointments[idx].last_reminded_at = null;
-    const saved = appointments[idx];
-    closeModal(); render();
+    const saved = { ...prev, ...fields, updated_at: now };
+    if (dueMoved) saved.last_reminded_at = null;
+    // The form stays open until the hub has the edit: a refused save leaves
+    // what was typed in place to send again (see saveFailed).
     try {
       assertChanged(await db(
         `UPDATE app_appointments__appointments SET ${APPOINTMENT_COLUMNS.map((c) => `${c} = ?`).join(", ")}, ${dueMoved ? "last_reminded_at = NULL, " : ""}updated_at = ? WHERE id = ?`,
         [...APPOINTMENT_COLUMNS.map((c) => saved[c]), now, existingId],
       ));
-    } catch (e) { appointments[idx] = prev; showError(e.message); return; }
-    // Outside the rollback: the row is committed, so a failed publish must not
-    // put the pre-edit values back on screen.
+    } catch (e) { saveFailed(e); return; }
+    const at = appointments.findIndex((a) => a.id === existingId);
+    if (at !== -1) appointments[at] = saved;
+    error = "";
+    closeModal(); render();
+    // The row is committed, so a failed publish must not look like a failed save.
     await syncAnnouncements(prev, saved);
   } else {
     const row = {
       id: crypto.randomUUID(), ...fields,
       last_reminded_at: null, created_by: me.id, created_at: now, updated_at: now,
     };
-    appointments = [...appointments, row];
-    closeModal(); render();
     try {
       assertChanged(await db(
         `INSERT INTO app_appointments__appointments (id, ${APPOINTMENT_COLUMNS.join(", ")}, created_by, created_at, updated_at) VALUES (${new Array(APPOINTMENT_COLUMNS.length + 4).fill("?").join(", ")})`,
         [row.id, ...APPOINTMENT_COLUMNS.map((c) => row[c]), row.created_by, now, now],
       ), "The appointment could not be added. Reload and try again.");
-    } catch (e) { appointments = appointments.filter((a) => a.id !== row.id); showError(e.message); return; }
+    } catch (e) { saveFailed(e); return; }
+    appointments = [...appointments, row];
+    error = "";
+    closeModal(); render();
     await syncAnnouncements(null, row);
   }
 }
@@ -511,7 +535,7 @@ async function deleteAppointment(id) {
     // table, and the hub refuses a batched DELETE on such a parent rather than
     // stranding the children it cannot resolve per statement.
     assertChanged(await db("DELETE FROM app_appointments__appointments WHERE id = ?", [id]));
-  } catch (e) { appointments = prevAppointments; recentVisits = prevVisits; showError(e.message); return; }
+  } catch (e) { appointments = prevAppointments; recentVisits = prevVisits; showError(failText(e, "Couldn’t delete the appointment — try again.")); return; }
   // After the DELETE commits, and not before: a retraction published for a row
   // that then failed to delete would leave it listed with its calendar entry
   // already gone.
@@ -537,13 +561,11 @@ async function logVisit(apptId, { visitDate, outcome, notes }) {
     logged_by: me.id, outcome, notes, created_at: now,
   };
   const nextDue = rollForwardDate(prev, visitDate);
-  appointments[idx] = {
+  const rolled = {
     ...prev, next_due_date: nextDue, scheduled_date: "", scheduled_time: "",
     last_reminded_at: null, updated_at: now,
   };
-  const rolled = appointments[idx];
-  recentVisits = [visit, ...recentVisits];
-  closeModal(); render();
+  // Nothing is drawn, and the form stays open, until the hub has answered.
   try {
     const [inserted, rolledResult] = await db.batch([
       {
@@ -553,7 +575,7 @@ async function logVisit(apptId, { visitDate, outcome, notes }) {
       {
         // The rolled date is computed in JS and BOUND, not computed in SQL: one
         // implementation of the month arithmetic rather than two that can
-        // disagree, and the optimistic row above already shows the value this
+        // disagree, and the row drawn afterwards shows the value this
         // writes. addMonths() reproduces `date(x, '+n months')` exactly,
         // overflow and all (see logic.js).
         sql: "UPDATE app_appointments__appointments SET next_due_date = ?, scheduled_date = '', scheduled_time = '', last_reminded_at = NULL, updated_at = ? WHERE id = ?",
@@ -564,20 +586,21 @@ async function logVisit(apptId, { visitDate, outcome, notes }) {
     // UPDATE with it and lands here as a throw. A zero-`changed` UPDATE is the
     // other case: the batch committed, the visit IS recorded, and only the
     // roll-forward matched nothing because the appointment moved out of reach.
-    // Rolling the local row back would then be a lie in the opposite direction,
-    // so this reloads instead of pretending either way.
+    // The visit is drawn, the appointment is left as it was, and the page says
+    // so instead of pretending either way.
     assertChanged(inserted, "The visit could not be logged. Reload and try again.");
     if (DB && Number(rolledResult?.changed ?? 0) === 0) {
-      appointments[idx] = prev;
+      recentVisits = [visit, ...recentVisits];
+      closeModal();
       showError("The visit was logged, but the next due date could not be updated — the appointment changed or became private somewhere else. Reload to see it as it is now.");
       return;
     }
-  } catch (e) {
-    appointments[idx] = prev;
-    recentVisits = recentVisits.filter((v) => v.id !== visit.id);
-    showError(e.message);
-    return;
-  }
+  } catch (e) { saveFailed(e); return; }
+  const at = appointments.findIndex((a) => a.id === apptId);
+  if (at !== -1) appointments[at] = rolled;
+  recentVisits = [visit, ...recentVisits];
+  error = "";
+  closeModal(); render();
   // Announced about `prev`, not `rolled`: same row, and prev is what the
   // visit actually happened against. A private appointment publishes nothing —
   // this payload carries the title, the person, the kind and the free-text
@@ -810,6 +833,7 @@ function openEditor(existing, prefill = null) {
       </div>
       <p class="muted tiny" style="margin-top:-4px" id="lead-note" data-testid="lead-note">${esc(leadNote(a?.visibility ?? "household", a?.remind_scope ?? "household", person))}</p>
       <div class="field"><label for="f-notes">Notes</label><textarea id="f-notes" data-testid="field-notes">${esc(a?.notes ?? "")}</textarea></div>
+      <div class="error" data-form-error data-testid="modal-error" role="alert" hidden></div>
       <div class="modal-actions">
         ${a ? `<button type="button" class="btn btn-danger modal-left" data-testid="appt-delete" data-delete="${esc(a.id)}">Delete</button>` : ""}
         ${a ? `<button type="button" class="btn btn-ghost" data-testid="appt-history" data-history="${esc(a.id)}">History</button>` : ""}
@@ -878,7 +902,7 @@ function openEditor(existing, prefill = null) {
     const leadValue = document.getElementById("f-lead").value;
     const status = document.getElementById("f-status").value;
     const btn = modalEl?.querySelector('button[type="submit"]');
-    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    if (btn) { btn.dataset.label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…"; }
     saveAppointment({
       person_id: document.getElementById("f-person").value,
       kind: document.getElementById("f-kind").value,
@@ -905,7 +929,7 @@ function openEditor(existing, prefill = null) {
       notes: document.getElementById("f-notes").value.trim(),
     }, a?.id ?? null).catch((err) => {
       if (btn) { btn.disabled = false; btn.textContent = a ? "Save" : "Add"; }
-      showError(err.message);
+      showError(failText(err, "Couldn’t save the appointment — try again."));
     });
   });
 }
@@ -961,6 +985,7 @@ function openVisitLogger(apptId) {
       <p class="muted tiny">${months
         ? `Next due will move to ${esc(longDate(addMonths(hubToday(), months)))} — ${esc(months)} month${months === 1 ? "" : "s"} after the visit — and any booked slot is cleared.`
         : "This is a one-off, so nothing is scheduled after it. Use “Schedule a follow-up” if the provider asked for one."}</p>
+      <div class="error" data-form-error data-testid="modal-error" role="alert" hidden></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost modal-left" data-testid="follow-up" data-followup="${esc(a.id)}">Schedule a follow-up</button>
         <button type="button" class="btn btn-ghost" data-testid="visit-cancel" data-cancel>Cancel</button>
@@ -972,14 +997,14 @@ function openVisitLogger(apptId) {
     const visitDate = document.getElementById("v-date").value;
     if (!visitDate) { document.getElementById("v-date").focus(); return; }
     const btn = modalEl?.querySelector('button[type="submit"]');
-    if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+    if (btn) { btn.dataset.label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…"; }
     logVisit(apptId, {
       visitDate,
       outcome: document.getElementById("v-outcome").value.trim(),
       notes: document.getElementById("v-notes").value.trim(),
     }).catch((err) => {
       if (btn) { btn.disabled = false; btn.textContent = "Log it"; }
-      showError(err.message);
+      showError(failText(err, "Couldn’t log the visit — try again."));
     });
   });
 }
@@ -1002,7 +1027,7 @@ async function openHistory(apptId) {
         [apptId],
       );
       visits = res.rows ?? [];
-    } catch (e) { showError(e.message); return; }
+    } catch (e) { showError(failText(e, "Couldn’t load the visit history.")); return; }
   }
   visits = [...visits].sort((x, y) => String(y.visit_date).localeCompare(String(x.visit_date)) || String(y.id).localeCompare(String(x.id)));
   openModal(`
@@ -1027,13 +1052,13 @@ document.addEventListener("click", (e) => {
   if (t.hasAttribute("data-add")) { openEditor(null); return; }
   if (t.hasAttribute("data-edit")) { openEditor(appointments.find((a) => a.id === t.getAttribute("data-edit"))); return; }
   if (t.hasAttribute("data-log")) { openVisitLogger(t.getAttribute("data-log")); return; }
-  if (t.hasAttribute("data-history")) { openHistory(t.getAttribute("data-history")).catch((err) => showError(err.message)); return; }
-  if (t.hasAttribute("data-delete")) { deleteAppointment(t.getAttribute("data-delete")).catch((err) => showError(err.message)); return; }
+  if (t.hasAttribute("data-history")) { openHistory(t.getAttribute("data-history")).catch((err) => showError(failText(err, "Couldn’t load the visit history."))); return; }
+  if (t.hasAttribute("data-delete")) { deleteAppointment(t.getAttribute("data-delete")).catch((err) => showError(failText(err, "Couldn’t delete the appointment — try again."))); return; }
   if (t.hasAttribute("data-cancel")) { closeModal(); return; }
   if (t.hasAttribute("data-archived")) {
     showArchived = !showArchived;
     if (!showArchived) { render(); return; }
-    loadArchived().then(render).catch((err) => showError(err.message));
+    loadArchived().then(render).catch((err) => showError(failText(err, "Couldn’t load the archived appointments.")));
     return;
   }
   if (t.hasAttribute("data-followup")) {
