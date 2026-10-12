@@ -74,6 +74,8 @@
     .edit-link:hover { color: var(--text); text-decoration: underline; }
     .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 2px 8px; }
     .empty { color: var(--muted); text-align: center; padding: 30px 16px; }
+    .load-error { margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: var(--hub-tint-danger, #fee2e2); color: var(--hub-tint-danger-fg, #b91c1c); font-size: 0.9rem; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .load-error-retry { background: none; border: 1px solid currentColor; border-radius: 8px; padding: 5px 10px; font: inherit; font-weight: 600; color: inherit; cursor: pointer; flex-shrink: 0; }
     .error { background: var(--red-soft); color: var(--red); padding: 9px 12px; border-radius: 8px; margin-bottom: 10px; font-size: .86rem; }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
     .modal { background: var(--surface); border-radius: 14px; padding: 22px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,.25); max-height: 92vh; overflow-y: auto; }
@@ -226,6 +228,7 @@ let lastVisits = new Map();
 let reminderStatus = null; // { entitled, missing_capabilities, bundle } | null
 let searchQ = "";
 let error = "";
+let loadFailed = false; // the first load failed: the list is unknown, not empty
 let modalEl = null;
 
 function nowIso() { return new Date().toISOString(); }
@@ -245,10 +248,14 @@ async function loadMembers() {
       { id: "demo-3", name: "Sam", role: "child", birthday: "2018-04-02" },
     ];
   } else {
-    try {
-      const res = await fetch(`${CONTEXT}?keys=family.members`);
-      members = ((await res.json())["family.members"]) ?? [];
-    } catch { members = []; }
+    // A roster that could not be read is a failed load, not an empty household.
+    const res = await fetch(`${CONTEXT}?keys=family.members`);
+    if (!res.ok) throw new Error(`context ${res.status}`);
+    const json = await res.json();
+    if (!json || typeof json !== "object") throw new Error("context: unexpected response");
+    // A 200 that names the key in `$errors` is the hub saying it could not read it.
+    if (Array.isArray(json.$errors) && json.$errors.includes("family.members")) throw new Error("context: family.members unavailable");
+    members = json["family.members"] ?? [];
   }
   memberMap = new Map(members.map((m) => [m.id, m]));
   me = HUB_MEMBER ?? members[0] ?? { id: "guest", name: "Guest", role: "adult" };
@@ -321,9 +328,10 @@ async function refresh() {
   error = "";
   try {
     await Promise.all([loadMembers(), loadData(), loadReminderStatus()]);
+    loadFailed = false;
     render();
     handleDeepLink();
-  } catch (e) { error = e.message; render(); }
+  } catch { loadFailed = true; render(); }
 }
 
 function showError(msg) { error = msg; render(); }
@@ -637,6 +645,7 @@ function renderList() {
   let html = "";
   if (active.length) html += `<div class="stack">${active.map(renderAppointment).join("")}</div>`;
   else if (searchQ) html += `<div class="card empty">Nothing matches "${esc(searchQ)}".</div>`;
+  else if (loadFailed) html += "";
   else html += `<div class="card empty">Nothing tracked yet${canManage() ? " — add the first check-up" : ""}.</div>`;
 
   if (showArchived) {
@@ -674,8 +683,9 @@ function render() {
           ? `<p class="muted tiny" data-testid="upgrade-note">${glyph("bell")} Emailed "time to book" reminders are paused while the household's plan is inactive — the countdown and the calendar entry work either way.</p>`
           : ""}
       </div>
-      ${canManage() ? `<button class="btn" data-testid="add-appointment" data-add>+ Add</button>` : ""}
+      ${canManage() && !loadFailed ? `<button class="btn" data-testid="add-appointment" data-add>+ Add</button>` : ""}
     </div>
+    ${loadFailed ? `<div class="load-error" data-testid="load-error" role="alert"><span>Couldn’t load the appointments.</span> <button type="button" class="load-error-retry" data-testid="load-retry">Try again</button></div>` : ""}
     ${error ? `<div class="error" data-testid="error">${esc(error)}</div>` : ""}
     <div class="stats">
       <div class="stat"><span class="v" data-testid="stat-to-book">${toBook}</span><span class="k">To book</span></div>
@@ -685,7 +695,7 @@ function render() {
     ${appointments.length ? `<div class="search-row"><input id="search" class="search-input" type="search" placeholder="Search appointments…" aria-label="Search appointments" value="${esc(searchQ)}" /></div>` : ""}
     <div id="appt-list" data-testid="appt-list">${renderList()}</div>
     ${!canManage() && appointments.length ? `<p class="muted tiny" data-testid="read-only-note" style="margin-top:10px">Only adults can add or change appointments.</p>` : ""}
-    <p style="margin-top:12px"><button class="edit-link" data-testid="toggle-archived" data-archived>${showArchived ? "Hide archived" : "Show archived"}</button></p>
+    ${loadFailed ? "" : `<p style="margin-top:12px"><button class="edit-link" data-testid="toggle-archived" data-archived>${showArchived ? "Hide archived" : "Show archived"}</button></p>`}
   `;
 }
 
@@ -1013,6 +1023,7 @@ async function openHistory(apptId) {
 document.addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
+  if (t.matches('[data-testid="load-retry"]')) { refresh(); return; }
   if (t.hasAttribute("data-add")) { openEditor(null); return; }
   if (t.hasAttribute("data-edit")) { openEditor(appointments.find((a) => a.id === t.getAttribute("data-edit"))); return; }
   if (t.hasAttribute("data-log")) { openVisitLogger(t.getAttribute("data-log")); return; }
