@@ -49,7 +49,8 @@ Health data, so the private lane is the point. `appointments` is
   "everyone_values": ["household"],
   "write_visibility_scoped": true,      // you may write exactly what you may read
   "delete_adult_only": true,
-  "column_write_acls": { /* every content column → writable_by: ["adult"] */ },
+  "column_write_acls": { /* every content column → writable_by: ["adult"];
+                            visibility → ["adult_owner"]; created_by → nobody */ },
   "max_rows": 2000
 }
 ```
@@ -79,7 +80,12 @@ Three things about that shape are load-bearing, and each is proved in
   adults, and with no group configured the hub grants that bypass to nobody, so
   declaring it would lock everyone out. Instead every content column carries
   `column_write_acls: { writable_by: ["adult"] }` and DELETE carries
-  `delete_adult_only`. A column added to the schema later without an ACL entry
+  `delete_adult_only`. Two columns are narrower. `visibility` is
+  `["adult_owner"]`: "private" means its creator alone, so only the adult who
+  added a row chooses it, and an UPDATE by anyone else that names the column
+  returns `changed: 0`. `created_by` is writable by nobody on UPDATE, so no
+  one can make a row their own first. A row whose creator has left the
+  household keeps the visibility it had. A column added to the schema later without an ACL entry
   is writable by a child — `__tests__/manifest.test.mjs` walks the migration and
   fails if one is missing.
 

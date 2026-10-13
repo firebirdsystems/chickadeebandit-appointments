@@ -541,6 +541,28 @@ export function canSeeAppointment(appt, me) {
 }
 
 /**
+ * Whether this member decides who sees an appointment: the adult who added it,
+ * and anyone adding a new one. `private` means "its creator alone", so for
+ * anyone else the choice could only hide the row from themselves and the rest
+ * of the household. Mirrors `column_write_acls.visibility` (writable_by
+ * ["adult_owner"]); the hub drops the whole UPDATE of anyone else who names
+ * the column.
+ */
+export function canChooseVisibility(appt, me) {
+  if (!isAdult(me)) return false;
+  return !appt || appt.created_by === me.id;
+}
+
+/**
+ * The columns this member's edit of an appointment may name. Naming
+ * `visibility` in anyone else's UPDATE makes the hub change no row at all, so
+ * their edit leaves it out and what is stored stays.
+ */
+export function writableColumns(columns, appt, me) {
+  return canChooseVisibility(appt, me) ? columns : columns.filter((c) => c !== "visibility");
+}
+
+/**
  * Fields the in-app search matches against (see hub-sdk `searchMatch`).
  * The provider and the notes count as well as the title — "who did we see for
  * the eye thing" is a provider question, and the reason lives in the notes.

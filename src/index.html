@@ -129,7 +129,7 @@ import {
   formatTime, addMonths, rollForwardDate, clampLeadDays, leadChoicesFor, remindOnDate,
   wantsBookingNudge, announcesBooking, isAnnounceable, nudgeRetractionReason, nudgeInputsChanged, bookingChanged,
   reviewTitle, bookingTitle, eventSummary, needsBooking, sortedAppointments,
-  lastVisitByAppointment, canManage as _canManage, searchableFields,
+  lastVisitByAppointment, canManage as _canManage, canChooseVisibility, writableColumns, searchableFields,
 } from "./logic.js";
 
 const CONTEXT = window.__CONTEXT_URL ?? "";
@@ -337,23 +337,57 @@ async function refresh() {
 
 function showError(msg) { error = msg; render(); }
 // Only wording this app wrote for the reader is shown; the hub's own error text
-// goes to the console and the reader gets the fixed line.
+// goes to the console and the reader gets the fixed line. A full table or a
+// full household (both HTTP 507) is the one refusal trying again cannot get
+// past, so it says what would.
 function failText(e, line) {
-  if (!e?.forUser) console.error(e);
-  return e?.forUser ? e.message : line;
+  if (e?.forUser) return e.message;
+  console.error(e);
+  if (e?.status === 507) return "There is no room left to save this. Delete appointments you no longer track, or free up household storage, then try again.";
+  return line;
 }
 
-// A save the hub refused: the form stays open as typed, says so in its own
-// error line, and its button works again. Only this app's own wording is
-// shown; anything else reads "Couldn’t save".
-function saveFailed(e) {
-  const msg = failText(e, "Couldn’t save — try again.");
-  const line = modalEl?.querySelector("[data-form-error]");
+// A form's own error line, with its button working again. The page banner is
+// drawn underneath an open form, so it is used only once that form has gone.
+// `form` is the one the message is about, which need not be the one on screen:
+// a form can be closed and another opened while its save is still out.
+function formError(form, msg) {
+  const line = form?.isConnected ? form.querySelector("[data-form-error]") : null;
   if (!line) { showError(msg); return; }
   line.textContent = msg;
   line.hidden = false;
-  const btn = modalEl.querySelector('button[type="submit"]');
+  const btn = form.querySelector('button[type="submit"]');
   if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label ?? btn.textContent; }
+}
+
+/** Marks a form as sending, clearing what its last attempt said. */
+function formSending(form) {
+  const line = form.querySelector("[data-form-error]");
+  if (line) { line.hidden = true; line.textContent = ""; }
+  const btn = form.querySelector('button[type="submit"]');
+  if (btn) { btn.dataset.label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…"; }
+}
+
+// A save the hub refused: the form stays open as typed and says so. Only this
+// app's own wording is shown; anything else reads "Couldn’t save".
+function saveFailed(e, form) { formError(form, failText(e, "Couldn’t save — try again.")); }
+
+// Anything a save threw outside its own handling. With its form still open
+// nothing was stored. Once the form has closed the row is in, and what failed
+// came afterwards, so it must not read as a failed save.
+function saveThrew(e, form) {
+  if (form.isConnected) { saveFailed(e, form); return; }
+  console.error(e);
+  showError("Something went wrong after saving. Reload to see it as it is now.");
+}
+
+// The row is committed by the time anything is published, so a failed publish
+// must not look like a failed save.
+async function published(publishing) {
+  try { await publishing; } catch (e) {
+    console.error(e);
+    showError("That was saved, but the household calendar could not be updated.");
+  }
 }
 
 function handleDeepLink() {
@@ -465,7 +499,10 @@ async function syncAnnouncements(prev, next) {
 
 /* ── Mutations ─────────────────────────────────────────────────────────────── */
 
-async function saveAppointment(fields, existingId) {
+// `form` is the form this was sent from, closed on success only if it is
+// still the one open. `draftId` is the id that form gives a new row, the same
+// on every attempt.
+async function saveAppointment(fields, existingId, form, draftId) {
   const now = nowIso();
   if (existingId) {
     const idx = appointments.findIndex((a) => a.id === existingId);
@@ -479,25 +516,28 @@ async function saveAppointment(fields, existingId) {
     // on screen to say so. Clearing cannot double-send; the hub's per-recipient
     // send log still holds the previous occurrence.
     const dueMoved = String(prev.next_due_date ?? "") !== String(fields.next_due_date ?? "");
-    const saved = { ...prev, ...fields, updated_at: now };
+    // `visibility` is its creator's column alone (writable_by ["adult_owner"]).
+    // Named in anyone else's UPDATE it would make the hub change no row at all,
+    // so their edit leaves it out and keeps what is stored.
+    const columns = writableColumns(APPOINTMENT_COLUMNS, prev, me);
+    const saved = { ...prev, ...fields, visibility: columns.includes("visibility") ? fields.visibility : prev.visibility, updated_at: now };
     if (dueMoved) saved.last_reminded_at = null;
     // The form stays open until the hub has the edit: a refused save leaves
     // what was typed in place to send again (see saveFailed).
     try {
       assertChanged(await db(
-        `UPDATE app_appointments__appointments SET ${APPOINTMENT_COLUMNS.map((c) => `${c} = ?`).join(", ")}, ${dueMoved ? "last_reminded_at = NULL, " : ""}updated_at = ? WHERE id = ?`,
-        [...APPOINTMENT_COLUMNS.map((c) => saved[c]), now, existingId],
+        `UPDATE app_appointments__appointments SET ${columns.map((c) => `${c} = ?`).join(", ")}, ${dueMoved ? "last_reminded_at = NULL, " : ""}updated_at = ? WHERE id = ?`,
+        [...columns.map((c) => saved[c]), now, existingId],
       ));
-    } catch (e) { saveFailed(e); return; }
+    } catch (e) { saveFailed(e, form); return; }
     const at = appointments.findIndex((a) => a.id === existingId);
     if (at !== -1) appointments[at] = saved;
     error = "";
-    closeModal(); render();
-    // The row is committed, so a failed publish must not look like a failed save.
-    await syncAnnouncements(prev, saved);
+    closeForm(form); render();
+    await published(syncAnnouncements(prev, saved));
   } else {
     const row = {
-      id: crypto.randomUUID(), ...fields,
+      id: draftId, ...fields,
       last_reminded_at: null, created_by: me.id, created_at: now, updated_at: now,
     };
     try {
@@ -505,11 +545,23 @@ async function saveAppointment(fields, existingId) {
         `INSERT INTO app_appointments__appointments (id, ${APPOINTMENT_COLUMNS.join(", ")}, created_by, created_at, updated_at) VALUES (${new Array(APPOINTMENT_COLUMNS.length + 4).fill("?").join(", ")})`,
         [row.id, ...APPOINTMENT_COLUMNS.map((c) => row[c]), row.created_by, now, now],
       ), "The appointment could not be added. Reload and try again.");
-    } catch (e) { saveFailed(e); return; }
+    } catch (e) {
+      // The id is the same on every attempt, so a row that already exists is
+      // an earlier attempt that was stored and whose answer never arrived.
+      // It is brought in line with the form as it stands now, which may have
+      // been corrected since.
+      if (e?.code !== "UNIQUE_CONSTRAINT") { saveFailed(e, form); return; }
+      try {
+        assertChanged(await db(
+          `UPDATE app_appointments__appointments SET ${APPOINTMENT_COLUMNS.map((c) => `${c} = ?`).join(", ")}, updated_at = ? WHERE id = ?`,
+          [...APPOINTMENT_COLUMNS.map((c) => row[c]), now, row.id],
+        ));
+      } catch (err) { saveFailed(err, form); return; }
+    }
     appointments = [...appointments, row];
     error = "";
-    closeModal(); render();
-    await syncAnnouncements(null, row);
+    closeForm(form); render();
+    await published(syncAnnouncements(null, row));
   }
 }
 
@@ -551,13 +603,13 @@ async function deleteAppointment(id) {
  * without its roll-forward would keep nudging "time to book" for something the
  * household has already done.
  */
-async function logVisit(apptId, { visitDate, outcome, notes }) {
+async function logVisit(apptId, { visitDate, outcome, notes }, form, draftId) {
   const idx = appointments.findIndex((a) => a.id === apptId);
   if (idx === -1) return;
   const prev = { ...appointments[idx] };
   const now = nowIso();
   const visit = {
-    id: crypto.randomUUID(), appointment_id: apptId, visit_date: visitDate,
+    id: draftId, appointment_id: apptId, visit_date: visitDate,
     logged_by: me.id, outcome, notes, created_at: now,
   };
   const nextDue = rollForwardDate(prev, visitDate);
@@ -591,16 +643,26 @@ async function logVisit(apptId, { visitDate, outcome, notes }) {
     assertChanged(inserted, "The visit could not be logged. Reload and try again.");
     if (DB && Number(rolledResult?.changed ?? 0) === 0) {
       recentVisits = [visit, ...recentVisits];
-      closeModal();
+      closeForm(form);
       showError("The visit was logged, but the next due date could not be updated — the appointment changed or became private somewhere else. Reload to see it as it is now.");
       return;
     }
-  } catch (e) { saveFailed(e); return; }
+  } catch (e) {
+    // The visit's id is the same on every attempt, so one that already exists
+    // is an earlier attempt whose batch was stored whole and whose answer
+    // never arrived: the visit is logged and the cadence rolled.
+    if (e?.code !== "UNIQUE_CONSTRAINT") { saveFailed(e, form); return; }
+  }
   const at = appointments.findIndex((a) => a.id === apptId);
   if (at !== -1) appointments[at] = rolled;
   recentVisits = [visit, ...recentVisits];
   error = "";
-  closeModal(); render();
+  closeForm(form); render();
+  await published(announceVisit(prev, rolled, { visitDate, outcome }));
+}
+
+async function announceVisit(prev, rolled, { visitDate, outcome }) {
+  const apptId = prev.id;
   // Announced about `prev`, not `rolled`: same row, and prev is what the
   // visit actually happened against. A private appointment publishes nothing —
   // this payload carries the title, the person, the kind and the free-text
@@ -733,6 +795,9 @@ function openModal(html) {
   modalEl.querySelector("[data-autofocus]")?.focus();
 }
 function closeModal() { modalEl?.remove(); modalEl = null; }
+/** Closes the form a save was sent from, and no other: by the time the hub
+ *  answers, that form may be gone and a different one open. */
+function closeForm(form) { if (form && modalEl === form) closeModal(); }
 
 /** The lead-time picker doubles as the on/off switch, so "nudge me about this
  *  one" is a single decision: "No reminder" means remind = 0, any number is a
@@ -823,7 +888,15 @@ function openEditor(existing, prefill = null) {
         <div class="field"><label for="f-scope">Email goes to</label><select id="f-scope" data-testid="field-scope">${scopeOptions}</select></div>
       </div>
       <div class="grid2">
-        <div class="field"><label for="f-visibility">Who can see it</label><select id="f-visibility" data-testid="field-visibility">${visOptions}</select></div>
+        <div class="field"><label for="f-visibility">Who can see it</label>${canChooseVisibility(a, me)
+          ? `<select id="f-visibility" data-testid="field-visibility">${visOptions}</select>`
+          // Not this member's to change: shown as it stands, so the form still
+          // has the value its notes are worked out from.
+          : `<input type="hidden" id="f-visibility" value="${esc(a?.visibility ?? "household")}" /><p class="muted tiny" style="margin:0" data-testid="visibility-fixed">${esc(VISIBILITIES.find((vis) => vis.value === (a?.visibility ?? "household"))?.label ?? "")}. ${memberMap.has(a?.created_by)
+            ? `Only ${esc(memberMap.get(a.created_by).name)} can change this.`
+            // "Private" means its creator alone, so with them gone it would
+            // hide the row from everyone. Nobody is left to choose it.
+            : "Whoever added it has left the household, so this stays as it is."}</p>`}</div>
         <div class="field"><label for="f-status">Status</label>
           <select id="f-status" data-testid="field-status">
             <option value="active" ${(a?.status ?? "active") === "active" ? "selected" : ""}>Active</option>
@@ -888,6 +961,8 @@ function openEditor(existing, prefill = null) {
     modalEl.querySelector("#f-kind").addEventListener("change", resuggest);
   }
 
+  const form = modalEl;
+  const draftId = a ? null : crypto.randomUUID();
   modalEl.querySelector("#appt-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const title = document.getElementById("f-title").value.trim();
@@ -896,13 +971,12 @@ function openEditor(existing, prefill = null) {
     const scheduledDate = document.getElementById("f-sched-date").value;
     const scheduledTime = document.getElementById("f-sched-time").value;
     if (scheduledTime && !scheduledDate) {
-      showError("A booked time needs a booked date.");
+      formError(form, "A booked time needs a booked date.");
       return;
     }
     const leadValue = document.getElementById("f-lead").value;
     const status = document.getElementById("f-status").value;
-    const btn = modalEl?.querySelector('button[type="submit"]');
-    if (btn) { btn.dataset.label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…"; }
+    formSending(form);
     saveAppointment({
       person_id: document.getElementById("f-person").value,
       kind: document.getElementById("f-kind").value,
@@ -927,10 +1001,7 @@ function openEditor(existing, prefill = null) {
       visibility: document.getElementById("f-visibility").value,
       status,
       notes: document.getElementById("f-notes").value.trim(),
-    }, a?.id ?? null).catch((err) => {
-      if (btn) { btn.disabled = false; btn.textContent = a ? "Save" : "Add"; }
-      showError(failText(err, "Couldn’t save the appointment — try again."));
-    });
+    }, a?.id ?? null, form, draftId).catch((err) => saveThrew(err, form));
   });
 }
 
@@ -992,20 +1063,18 @@ function openVisitLogger(apptId) {
         <button type="submit" class="btn" data-testid="visit-submit">Log it</button>
       </div>
     </form>`);
+  const form = modalEl;
+  const draftId = crypto.randomUUID();
   modalEl.querySelector("#visit-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const visitDate = document.getElementById("v-date").value;
     if (!visitDate) { document.getElementById("v-date").focus(); return; }
-    const btn = modalEl?.querySelector('button[type="submit"]');
-    if (btn) { btn.dataset.label = btn.textContent; btn.disabled = true; btn.textContent = "Saving…"; }
+    formSending(form);
     logVisit(apptId, {
       visitDate,
       outcome: document.getElementById("v-outcome").value.trim(),
       notes: document.getElementById("v-notes").value.trim(),
-    }).catch((err) => {
-      if (btn) { btn.disabled = false; btn.textContent = "Log it"; }
-      showError(failText(err, "Couldn’t log the visit — try again."));
-    });
+    }, form, draftId).catch((err) => saveThrew(err, form));
   });
 }
 

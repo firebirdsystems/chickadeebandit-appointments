@@ -44,7 +44,8 @@
         "lead_days": { "writable_by": ["adult"] },
         "remind": { "writable_by": ["adult"] },
         "remind_scope": { "writable_by": ["adult"] },
-        "visibility": { "writable_by": ["adult"] },
+        "visibility": { "writable_by": ["adult_owner"] },
+        "created_by": { "writable_by": [], "actions": ["update"] },
         "status": { "writable_by": ["adult"] },
         "notes": { "writable_by": ["adult"] }
       },

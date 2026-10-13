@@ -391,6 +391,112 @@
           }
         }
       ]
+    },
+    {
+      "name": "a household appointment is hidden only by the adult who added it, and nobody becomes its creator",
+      "members": {
+        "parent_a": "adult",
+        "parent_b": "adult",
+        "kid": "child"
+      },
+      "steps": [
+        {
+          "action": "db",
+          "as": "parent_a",
+          "sql": "INSERT INTO app_appointments__appointments (id, person_id, kind, title, interval_months, next_due_date, lead_days, remind, remind_scope, visibility, status, created_by, created_at, updated_at) VALUES ('p-guarded', ?, 'dental', 'Dentist', 6, '2030-03-14', 30, 1, 'household', 'household', 'active', ?, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
+          "params": [
+            "{{kid}}",
+            "{{parent_a}}"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "UPDATE app_appointments__appointments SET notes = ? WHERE id = 'p-guarded'",
+          "params": [
+            "Bring the retainer"
+          ],
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "UPDATE app_appointments__appointments SET visibility = 'private' WHERE id = 'p-guarded'",
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "UPDATE app_appointments__appointments SET created_by = ?, visibility = 'private' WHERE id = 'p-guarded'",
+          "params": [
+            "{{parent_b}}"
+          ],
+          "expect": {
+            "status": 403,
+            "errorIncludes": "immutable"
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_appointments__appointments SET created_by = ? WHERE id = 'p-guarded'",
+          "params": [
+            "{{kid}}"
+          ],
+          "expect": {
+            "status": 403,
+            "errorIncludes": "immutable"
+          }
+        },
+        {
+          "action": "db",
+          "as": "kid",
+          "sql": "UPDATE app_appointments__appointments SET visibility = 'private' WHERE id = 'p-guarded'",
+          "expect": {
+            "status": 403,
+            "errorIncludes": "when an adult"
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "SELECT notes, visibility, created_by FROM app_appointments__appointments WHERE id = 'p-guarded'",
+          "expect": {
+            "status": 200,
+            "rowCount": 1,
+            "rowsContain": [
+              {
+                "notes": "Bring the retainer",
+                "visibility": "household"
+              }
+            ]
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_a",
+          "sql": "UPDATE app_appointments__appointments SET visibility = 'private' WHERE id = 'p-guarded'",
+          "expect": {
+            "status": 200
+          }
+        },
+        {
+          "action": "db",
+          "as": "parent_b",
+          "sql": "SELECT id FROM app_appointments__appointments WHERE id = 'p-guarded'",
+          "expect": {
+            "status": 200,
+            "rowCount": 0
+          }
+        }
+      ]
     }
   ]
 }

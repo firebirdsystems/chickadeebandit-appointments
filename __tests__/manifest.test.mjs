@@ -119,6 +119,15 @@ describe("row policies", () => {
     expect(appts.visibility_column).toBe("visibility");
   });
 
+  it("lets only the adult who added a row change who sees it, and nobody change who added it", () => {
+    // write_visibility_scoped lets every adult UPDATE a household row. With
+    // visibility writable by any adult, one could mark another's appointment
+    // private (hiding it from the household, themselves included), and with
+    // created_by unguarded could first make the row their own.
+    expect(appts.column_write_acls.visibility).toEqual({ writable_by: ["adult_owner"] });
+    expect(appts.column_write_acls.created_by).toEqual({ writable_by: [], actions: ["update"] });
+  });
+
   it("does not claim a privileged group it has not configured", () => {
     // write_privileged_only / insert_privileged_only mean "members of a
     // configured hub group", NOT "adults", and with no group configured the hub
@@ -137,8 +146,9 @@ describe("row policies", () => {
     const structural = new Set(["id", "created_by", "created_at", "updated_at", "last_reminded_at", "source_event_id"]);
     for (const col of APPT_COLUMNS) {
       if (structural.has(col)) continue;
+      // `visibility` is narrower still: the adult who added the row, alone.
       expect(appts.column_write_acls[col], `appointments.${col} has no write ACL`)
-        .toEqual({ writable_by: ["adult"] });
+        .toEqual({ writable_by: [col === "visibility" ? "adult_owner" : "adult"] });
     }
     const visitStructural = new Set(["id", "logged_by", "created_at"]);
     for (const col of VISIT_COLUMNS) {

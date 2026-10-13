@@ -5,7 +5,7 @@ import {
   formatTime, dueLabel, maxLeadDays, clampLeadDays, leadChoicesFor, remindOnDate,
   normalizeIntervalMonths, rollForwardDate, wantsBookingNudge, announcesBooking, isAnnounceable, nudgeRetractionReason, nudgeInputsChanged, bookingChanged,
   reviewTitle, bookingTitle, eventSummary, needsBooking, sortedAppointments,
-  lastVisitByAppointment, canManage, canSeeAppointment, searchableFields,
+  lastVisitByAppointment, canManage, canSeeAppointment, canChooseVisibility, writableColumns, searchableFields,
 } from "../src/logic.js";
 
 /** The household's "today" as these helpers expect it: a local noon Date. */
@@ -427,6 +427,31 @@ describe("client gates mirror the server", () => {
     expect(canSeeAppointment(priv, kid)).toBe(false);
     expect(canSeeAppointment(appt(), other)).toBe(true);
     expect(canSeeAppointment(appt(), kid)).toBe(true);
+  });
+
+  it("leaves who sees a row to the adult who added it", () => {
+    // "private" means its creator alone, so another adult choosing it could
+    // only hide the row from themselves and everyone else. The hub guards the
+    // column to its adult owner and drops anyone else's UPDATE that names it.
+    const parent = { id: "m-parent", role: "adult" };
+    const other = { id: "m-other", role: "adult" };
+    const kid = { id: "m-kid", role: "child" };
+    const shared = appt({ created_by: "m-parent" });
+    expect(canChooseVisibility(shared, parent)).toBe(true);
+    expect(canChooseVisibility(shared, other)).toBe(false);
+    expect(canChooseVisibility(null, other)).toBe(true); // adding a new one
+    expect(canChooseVisibility(null, kid)).toBe(false);
+    expect(canChooseVisibility(appt({ created_by: "m-kid" }), kid)).toBe(false);
+    expect(canChooseVisibility(shared, null)).toBe(false);
+  });
+
+  it("leaves visibility out of an edit by anyone but the adult who added the row", () => {
+    const parent = { id: "m-parent", role: "adult" };
+    const other = { id: "m-other", role: "adult" };
+    const shared = appt({ created_by: "m-parent" });
+    const columns = ["title", "visibility", "notes"];
+    expect(writableColumns(columns, shared, parent)).toEqual(columns);
+    expect(writableColumns(columns, shared, other)).toEqual(["title", "notes"]);
   });
 });
 

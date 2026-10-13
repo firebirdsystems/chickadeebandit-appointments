@@ -528,6 +528,154 @@
           "selector": "[data-testid=\"appt-list\"]"
         }
       ]
+    },
+    {
+      "name": "another adult's edit saves without touching who sees it, and a form's own error shows in the form",
+      "members": {
+        "parent_a": "adult",
+        "parent_b": "adult"
+      },
+      "steps": [
+        {
+          "action": "open",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"add-appointment\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-title\"]",
+          "value": "Dentist",
+          "as": "parent_a"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-due\"]",
+          "value": "2030-06-15",
+          "as": "parent_a"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-scheduled-time\"]",
+          "value": "10:30",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "expectText",
+          "text": "A booked time needs a booked date.",
+          "selector": "[data-testid=\"modal-error\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-scheduled-date\"]",
+          "value": "2030-06-10",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "state": "detached",
+          "as": "parent_a"
+        },
+        {
+          "action": "open",
+          "as": "parent_b"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"edit-appointment\"]",
+          "as": "parent_b"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "as": "parent_b"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"field-visibility\"]",
+          "count": 0,
+          "as": "parent_b"
+        },
+        {
+          "action": "expectText",
+          "text": "can change this",
+          "selector": "[data-testid=\"visibility-fixed\"]",
+          "as": "parent_b"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"field-title\"]",
+          "value": "Dentist (Dr. Lee)",
+          "as": "parent_b"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"appt-submit\"]",
+          "as": "parent_b"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "state": "detached",
+          "as": "parent_b"
+        },
+        {
+          "action": "reload",
+          "as": "parent_b"
+        },
+        {
+          "action": "expectText",
+          "text": "Dentist (Dr. Lee)",
+          "selector": "[data-testid=\"appt-list\"]",
+          "as": "parent_b"
+        },
+        {
+          "action": "open",
+          "as": "parent_a"
+        },
+        {
+          "action": "expectText",
+          "text": "Dentist (Dr. Lee)",
+          "selector": "[data-testid=\"appt-list\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"edit-appointment\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[data-testid=\"appt-form\"]",
+          "as": "parent_a"
+        },
+        {
+          "action": "expectCount",
+          "selector": "[data-testid=\"field-visibility\"]",
+          "count": 1,
+          "as": "parent_a"
+        }
+      ]
     }
   ]
 }
