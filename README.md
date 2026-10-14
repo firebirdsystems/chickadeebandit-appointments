@@ -100,7 +100,7 @@ while `person_id` must stay settable by someone else.
 under an `owner_or_visibility` parent, privilege means privileged-group
 membership only, so without it a mistyped visit could be corrected by nobody but
 whoever logged it, and would freeze permanently once that member left.
-`retain_days` expires visit history after five years.
+`retention` expires visit history after five years.
 
 `contexts: ["household"]` and `kiosk: "never"`: there is no version of this data
 that belongs in a classroom roster or on a shared wall screen. No `ai_access`
