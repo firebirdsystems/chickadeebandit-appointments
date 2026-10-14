@@ -181,10 +181,11 @@ describe("row policies", () => {
   });
 
   it("expires visit history on a plaintext date column", () => {
-    expect(visits.retain_days.timestamp_column).toBe("visit_date");
-    expect(isPlaintext(visits.retain_days.timestamp_column)).toBe(true);
-    expect(visits.retain_days.default).toBe(1825);
-    expect(VISIT_COLUMNS).toContain(visits.retain_days.id_column);
+    const retention = manifest.retention.visits;
+    expect(retention.timestamp_column).toBe("visit_date");
+    expect(isPlaintext(retention.timestamp_column)).toBe(true);
+    expect(retention.default).toBe(1825);
+    expect(VISIT_COLUMNS).toContain(retention.id_column);
   });
 
   it("takes a deleted appointment's visits with it, both ways", () => {
